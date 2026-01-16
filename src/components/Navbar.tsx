@@ -1,10 +1,32 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useGameStore } from '@/store/gameStore';
-import { Heart, Coins, User, Wallet } from 'lucide-react';
+import { Heart, Coins, Wallet, Menu, X, Flame, Trophy } from 'lucide-react';
 
 const Navbar = () => {
   const location = useLocation();
-  const { points, lives, maxLives } = useGameStore();
+  const { points, lives, maxLives, streak, unlockedAchievements, checkDailyReset, generateDailyChallenges, dailyChallenges } = useGameStore();
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    checkDailyReset();
+    if (dailyChallenges.length === 0) {
+      generateDailyChallenges();
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
 
   const navItems = [
     { path: '/', label: 'Home' },
@@ -19,92 +41,127 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <span className="font-display text-xl font-bold text-foreground">
-              NP <span className="text-primary">TimeWave</span>
-            </span>
-          </Link>
+    <>
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        isScrolled ? 'bg-background/95 backdrop-blur-md shadow-lg shadow-black/10' : 'bg-background/80 backdrop-blur-sm'
+      } border-b border-border/50`}>
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-2 group">
+              <span className="font-display text-xl font-bold text-foreground transition-all duration-300 group-hover:scale-105">
+                NP <span className="np-gradient-text">TimeWave</span>
+              </span>
+            </Link>
 
-          {/* Navigation Links */}
-          <div className="hidden md:flex items-center gap-8">
-            {navItems.map((item) => (
+            {/* Navigation Links - Desktop */}
+            <div className="hidden md:flex items-center gap-8">
+              {navItems.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`np-nav-item ${isActive(item.path) ? 'np-nav-item-active' : ''}`}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+
+            {/* Right side - Stats */}
+            <div className="flex items-center gap-3">
+              {/* Streak Badge */}
+              {streak > 0 && (
+                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-full border border-orange-500/30 animate-fade-in">
+                  <Flame className="w-4 h-4 text-orange-500" />
+                  <span className="font-bold text-orange-500 text-sm">{streak}</span>
+                </div>
+              )}
+
+              {/* Achievements */}
+              <Link 
+                to="/quests" 
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-secondary rounded-full hover:bg-secondary/80 transition-colors group"
+              >
+                <Trophy className="w-4 h-4 text-np-gold group-hover:animate-bounce" />
+                <span className="font-semibold text-foreground text-sm">{unlockedAchievements.length}</span>
+              </Link>
+
+              {/* Lives */}
+              <div className="flex items-center gap-1 px-3 py-1.5 bg-secondary rounded-full">
+                <div className="flex gap-0.5">
+                  {Array.from({ length: maxLives }).map((_, i) => (
+                    <Heart
+                      key={i}
+                      className={`w-4 h-4 transition-all duration-300 ${
+                        i < lives 
+                          ? 'fill-np-red text-np-red animate-pulse' 
+                          : 'text-muted-foreground'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Points */}
+              <div className="flex items-center gap-2 bg-secondary px-3 py-1.5 rounded-full group hover:bg-secondary/80 transition-colors">
+                <Coins className="w-4 h-4 text-np-gold group-hover:animate-bounce" />
+                <span className="font-bold text-foreground text-sm">{points.toLocaleString()}</span>
+              </div>
+
+              {/* Wallet */}
+              <Link
+                to="/wallet"
+                className="p-2 rounded-full bg-secondary hover:bg-secondary/80 transition-all duration-200 hover:scale-105 active:scale-95"
+              >
+                <Wallet className="w-5 h-5 text-foreground" />
+              </Link>
+
+              {/* Mobile Menu Toggle */}
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="md:hidden p-2 rounded-full bg-secondary hover:bg-secondary/80 transition-colors"
+              >
+                {isMobileMenuOpen ? (
+                  <X className="w-5 h-5 text-foreground" />
+                ) : (
+                  <Menu className="w-5 h-5 text-foreground" />
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Navigation */}
+        <div className={`md:hidden border-t border-border overflow-hidden transition-all duration-300 ${
+          isMobileMenuOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0'
+        }`}>
+          <div className="container mx-auto px-4 py-4 space-y-2">
+            {navItems.map((item, index) => (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`font-medium transition-colors duration-200 ${
+                className={`block px-4 py-3 rounded-xl transition-all duration-200 ${
                   isActive(item.path)
-                    ? 'text-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'bg-primary/20 text-foreground font-semibold'
+                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                 }`}
+                style={{ animationDelay: `${index * 50}ms` }}
               >
                 {item.label}
               </Link>
             ))}
           </div>
-
-          {/* Right side - Stats and Auth */}
-          <div className="flex items-center gap-4">
-            {/* Lives */}
-            <div className="flex items-center gap-1">
-              {Array.from({ length: maxLives }).map((_, i) => (
-                <Heart
-                  key={i}
-                  className={`w-5 h-5 ${
-                    i < lives ? 'fill-np-red text-np-red' : 'text-muted-foreground'
-                  }`}
-                />
-              ))}
-              <span className="text-sm text-muted-foreground ml-1">{lives}/{maxLives}</span>
-            </div>
-
-            {/* Points */}
-            <div className="flex items-center gap-2 bg-secondary px-3 py-1.5 rounded-full">
-              <Coins className="w-4 h-4 text-np-gold" />
-              <span className="font-semibold text-foreground">{points}</span>
-            </div>
-
-            {/* Wallet */}
-            <Link
-              to="/wallet"
-              className="p-2 rounded-full bg-secondary hover:bg-secondary/80 transition-colors"
-            >
-              <Wallet className="w-5 h-5 text-foreground" />
-            </Link>
-
-            {/* Login / Sign Up */}
-            <div className="hidden md:flex items-center gap-2">
-              <button className="np-nav-item px-3 py-1.5">Log in</button>
-              <button className="bg-secondary text-foreground px-4 py-1.5 rounded-full font-medium hover:bg-secondary/80 transition-colors">
-                Sign up
-              </button>
-            </div>
-          </div>
         </div>
-      </div>
+      </nav>
 
-      {/* Mobile Navigation */}
-      <div className="md:hidden border-t border-border">
-        <div className="flex justify-around py-2">
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`text-sm font-medium py-1 px-2 ${
-                isActive(item.path)
-                  ? 'text-foreground'
-                  : 'text-muted-foreground'
-              }`}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </div>
-      </div>
-    </nav>
+      {/* Mobile menu overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden animate-fade-in"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+    </>
   );
 };
 

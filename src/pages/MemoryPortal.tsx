@@ -1,26 +1,58 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useGameStore, Memory } from '@/store/gameStore';
-import { Plus, Calendar, User, Filter } from 'lucide-react';
+import { useGameStore, Memory, memoryThemes, memoryRoles } from '@/store/gameStore';
+import { Plus, Calendar, User, Filter, Search, Heart, Star, Sparkles, X } from 'lucide-react';
 
 type DecadeFilter = 'all' | '1960s' | '1970s' | '1980s' | '1990s' | '2000s' | '2010s' | '2020s';
 
 const MemoryPortal = () => {
-  const { memories } = useGameStore();
+  const { memories, resonatedMemories, resonateWithMemory } = useGameStore();
   const [selectedDecade, setSelectedDecade] = useState<DecadeFilter>('all');
+  const [selectedTheme, setSelectedTheme] = useState<string>('all');
+  const [selectedRole, setSelectedRole] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
 
   const decades: DecadeFilter[] = ['all', '1960s', '1970s', '1980s', '1990s', '2000s', '2010s', '2020s'];
 
   const approvedMemories = memories.filter((m) => m.status === 'approved');
-  const filteredMemories = selectedDecade === 'all'
-    ? approvedMemories
-    : approvedMemories.filter((m) => m.decade === selectedDecade);
+  
+  const featuredMemories = useMemo(() => 
+    approvedMemories.filter((m) => m.featured || m.resonanceCount > 20).slice(0, 2),
+    [approvedMemories]
+  );
+
+  const filteredMemories = useMemo(() => {
+    return approvedMemories.filter((m) => {
+      if (selectedDecade !== 'all' && m.decade !== selectedDecade) return false;
+      if (selectedTheme !== 'all' && m.theme !== selectedTheme) return false;
+      if (selectedRole !== 'all' && m.role !== selectedRole) return false;
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        return (
+          m.title.toLowerCase().includes(query) ||
+          m.story.toLowerCase().includes(query) ||
+          m.authorName?.toLowerCase().includes(query)
+        );
+      }
+      return true;
+    });
+  }, [approvedMemories, selectedDecade, selectedTheme, selectedRole, searchQuery]);
+
+  const clearFilters = () => {
+    setSelectedDecade('all');
+    setSelectedTheme('all');
+    setSelectedRole('all');
+    setSearchQuery('');
+  };
+
+  const hasActiveFilters = selectedDecade !== 'all' || selectedTheme !== 'all' || selectedRole !== 'all' || searchQuery;
 
   return (
     <div className="min-h-screen pt-20 pb-12">
       <div className="container mx-auto px-4">
         {/* Hero Section */}
-        <div className="py-12 text-center">
+        <div className="py-12 text-center animate-fade-in">
           <h1 className="font-display text-4xl md:text-5xl font-bold text-foreground mb-4">
             Memory Portal
           </h1>
@@ -37,47 +69,216 @@ const MemoryPortal = () => {
           </Link>
         </div>
 
-        {/* Filter */}
-        <div className="mb-8">
-          <div className="flex items-center gap-4 flex-wrap justify-center">
-            <Filter className="w-5 h-5 text-muted-foreground" />
-            {decades.map((decade) => (
-              <button
-                key={decade}
-                onClick={() => setSelectedDecade(decade)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                  selectedDecade === decade
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-secondary text-foreground hover:bg-secondary/80'
-                }`}
-              >
-                {decade === 'all' ? 'All Decades' : decade}
-              </button>
-            ))}
+        {/* Onboarding Banner */}
+        <div className="np-card p-6 mb-8 bg-gradient-to-r from-primary/10 to-cyan-400/10 border-primary/20 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.1s' }}>
+          <div className="flex flex-col md:flex-row items-center gap-4 text-center md:text-left">
+            <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-8 h-8 text-primary" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-display text-lg font-bold text-foreground mb-1">
+                Your Story Matters
+              </h3>
+              <p className="text-muted-foreground text-sm">
+                Every NP journey is unique. Share your favorite campus moments, friendships, achievements, 
+                or lessons learned. Your memory becomes part of our collective heritage.
+              </p>
+            </div>
+            <Link to="/memory-portal/submit" className="np-button-secondary whitespace-nowrap">
+              Get Started
+            </Link>
           </div>
+        </div>
+
+        {/* Featured Memories */}
+        {featuredMemories.length > 0 && (
+          <section className="mb-12 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.2s' }}>
+            <div className="flex items-center gap-2 mb-6">
+              <Star className="w-5 h-5 text-np-gold" />
+              <h2 className="font-display text-xl font-bold text-foreground">Featured Stories</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {featuredMemories.map((memory, index) => (
+                <FeaturedMemoryCard 
+                  key={memory.id} 
+                  memory={memory} 
+                  index={index}
+                  isResonated={resonatedMemories.includes(memory.id)}
+                  onResonate={() => resonateWithMemory(memory.id)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Search and Filter */}
+        <div className="mb-8 space-y-4">
+          {/* Search Bar */}
+          <div className="flex gap-3 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.3s' }}>
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search memories..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="np-input pl-12"
+              />
+            </div>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`px-4 py-3 rounded-xl font-medium transition-all duration-200 flex items-center gap-2 ${
+                showFilters || hasActiveFilters
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary text-foreground hover:bg-secondary/80'
+              }`}
+            >
+              <Filter className="w-5 h-5" />
+              <span className="hidden sm:inline">Filters</span>
+              {hasActiveFilters && (
+                <span className="w-2 h-2 bg-white rounded-full" />
+              )}
+            </button>
+          </div>
+
+          {/* Filter Panel */}
+          {showFilters && (
+            <div className="np-card p-6 space-y-4 animate-fade-in">
+              {/* Decade Filter */}
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-2">Decade</label>
+                <div className="flex flex-wrap gap-2">
+                  {decades.map((decade) => (
+                    <button
+                      key={decade}
+                      onClick={() => setSelectedDecade(decade)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                        selectedDecade === decade
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-secondary text-foreground hover:bg-secondary/80'
+                      }`}
+                    >
+                      {decade === 'all' ? 'All' : decade}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Theme Filter */}
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-2">Theme</label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setSelectedTheme('all')}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                      selectedTheme === 'all'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary text-foreground hover:bg-secondary/80'
+                    }`}
+                  >
+                    All Themes
+                  </button>
+                  {memoryThemes.map((theme) => (
+                    <button
+                      key={theme}
+                      onClick={() => setSelectedTheme(theme)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                        selectedTheme === theme
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-secondary text-foreground hover:bg-secondary/80'
+                      }`}
+                    >
+                      {theme}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Role Filter */}
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-2">Role</label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setSelectedRole('all')}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                      selectedRole === 'all'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary text-foreground hover:bg-secondary/80'
+                    }`}
+                  >
+                    All Roles
+                  </button>
+                  {memoryRoles.map((role) => (
+                    <button
+                      key={role}
+                      onClick={() => setSelectedRole(role)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                        selectedRole === role
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-secondary text-foreground hover:bg-secondary/80'
+                      }`}
+                    >
+                      {role}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Clear Filters */}
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="text-primary text-sm font-medium hover:underline flex items-center gap-1"
+                >
+                  <X className="w-4 h-4" />
+                  Clear all filters
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Memory Grid */}
         {filteredMemories.length === 0 ? (
-          <div className="text-center py-16">
+          <div className="text-center py-16 animate-fade-in">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <Search className="w-8 h-8 text-muted-foreground" />
+            </div>
             <p className="text-muted-foreground text-lg mb-4">
-              No memories found for this period.
+              {hasActiveFilters ? 'No memories match your filters.' : 'No memories found for this period.'}
             </p>
-            <Link to="/memory-portal/submit" className="text-primary font-medium hover:underline">
-              Be the first to share a memory!
-            </Link>
+            {hasActiveFilters ? (
+              <button onClick={clearFilters} className="text-primary font-medium hover:underline">
+                Clear filters
+              </button>
+            ) : (
+              <Link to="/memory-portal/submit" className="text-primary font-medium hover:underline">
+                Be the first to share a memory!
+              </Link>
+            )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredMemories.map((memory, index) => (
-              <MemoryCard key={memory.id} memory={memory} index={index} />
-            ))}
-          </div>
+          <>
+            <p className="text-muted-foreground text-sm mb-4">
+              Showing {filteredMemories.length} {filteredMemories.length === 1 ? 'memory' : 'memories'}
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredMemories.map((memory, index) => (
+                <MemoryCard 
+                  key={memory.id} 
+                  memory={memory} 
+                  index={index}
+                  isResonated={resonatedMemories.includes(memory.id)}
+                  onResonate={() => resonateWithMemory(memory.id)}
+                />
+              ))}
+            </div>
+          </>
         )}
 
         {/* Info Section */}
         <section className="mt-16">
-          <div className="np-card p-8 max-w-2xl mx-auto text-center">
+          <div className="np-card p-8 max-w-2xl mx-auto text-center animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.5s' }}>
             <h2 className="font-display text-2xl font-bold text-foreground mb-4">
               Share Your NP Story
             </h2>
@@ -98,48 +299,117 @@ const MemoryPortal = () => {
 interface MemoryCardProps {
   memory: Memory;
   index: number;
+  isResonated: boolean;
+  onResonate: () => void;
 }
 
-const MemoryCard = ({ memory, index }: MemoryCardProps) => {
+const MemoryCard = ({ memory, index, isResonated, onResonate }: MemoryCardProps) => {
+  const handleResonate = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onResonate();
+  };
+
   return (
-    <Link
-      to={`/memory-portal/${memory.id}`}
-      className="np-card-interactive p-6 animate-slide-up"
-      style={{ animationDelay: `${index * 100}ms` }}
+    <div
+      className="np-card-interactive p-6 animate-fade-in-up flex flex-col"
+      style={{ animationDelay: `${index * 50}ms`, opacity: 0 }}
     >
-      {memory.imageUrl && (
-        <div className="aspect-video rounded-xl bg-muted mb-4 overflow-hidden">
-          <img
-            src={memory.imageUrl}
-            alt={memory.title}
-            className="w-full h-full object-cover"
-          />
+      <Link to={`/memory-portal/${memory.id}`} className="flex-1">
+        {memory.imageUrl && (
+          <div className="aspect-video rounded-xl bg-muted mb-4 overflow-hidden">
+            <img
+              src={memory.imageUrl}
+              alt={memory.title}
+              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+            />
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          <span className="np-badge-primary">
+            {memory.decade}
+          </span>
+          {memory.theme && (
+            <span className="np-badge bg-secondary text-muted-foreground">
+              {memory.theme}
+            </span>
+          )}
         </div>
-      )}
 
-      <div className="flex items-center gap-2 mb-3">
-        <span className="px-3 py-1 bg-primary/20 text-primary text-xs font-medium rounded-full">
-          {memory.decade}
-        </span>
-      </div>
+        <h3 className="font-display text-xl font-bold text-foreground mb-2 hover:text-primary transition-colors">
+          {memory.title}
+        </h3>
 
-      <h3 className="font-display text-xl font-bold text-foreground mb-2">
-        {memory.title}
-      </h3>
+        <p className="text-muted-foreground text-sm line-clamp-3 mb-4">
+          {memory.story}
+        </p>
+      </Link>
 
-      <p className="text-muted-foreground text-sm line-clamp-3 mb-4">
-        {memory.story}
-      </p>
-
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between text-sm pt-4 border-t border-border">
+        <div className="flex items-center gap-2 text-muted-foreground">
           <User className="w-4 h-4" />
           <span>{memory.anonymous ? 'Anonymous' : memory.authorName}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4" />
-          <span>{new Date(memory.createdAt).toLocaleDateString()}</span>
+        
+        <button
+          onClick={handleResonate}
+          className={`np-resonance-btn ${isResonated ? 'np-resonance-btn-active' : 'np-resonance-btn-inactive'}`}
+        >
+          <Heart className={`w-4 h-4 ${isResonated ? 'fill-current' : ''}`} />
+          <span>{memory.resonanceCount}</span>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+interface FeaturedMemoryCardProps {
+  memory: Memory;
+  index: number;
+  isResonated: boolean;
+  onResonate: () => void;
+}
+
+const FeaturedMemoryCard = ({ memory, index, isResonated, onResonate }: FeaturedMemoryCardProps) => {
+  const handleResonate = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onResonate();
+  };
+
+  return (
+    <Link
+      to={`/memory-portal/${memory.id}`}
+      className="np-card group p-6 border-np-gold/30 bg-gradient-to-br from-np-gold/5 to-transparent hover:shadow-lg hover:shadow-np-gold/10 transition-all duration-300"
+      style={{ animationDelay: `${index * 100}ms` }}
+    >
+      <div className="flex items-start gap-2 mb-3">
+        <Star className="w-4 h-4 text-np-gold fill-np-gold" />
+        <span className="text-np-gold text-xs font-medium">Featured Story</span>
+      </div>
+
+      <h3 className="font-display text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
+        {memory.title}
+      </h3>
+
+      <p className="text-muted-foreground text-sm line-clamp-2 mb-4">
+        {memory.story}
+      </p>
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <span className="np-badge-primary text-xs">{memory.decade}</span>
+          <span>{memory.anonymous ? 'Anonymous' : memory.authorName}</span>
         </div>
+        
+        <button
+          onClick={handleResonate}
+          className={`np-resonance-btn ${isResonated ? 'np-resonance-btn-active' : 'np-resonance-btn-inactive'}`}
+        >
+          <Heart className={`w-4 h-4 ${isResonated ? 'fill-current' : ''}`} />
+          <span>{memory.resonanceCount}</span>
+        </button>
       </div>
     </Link>
   );
