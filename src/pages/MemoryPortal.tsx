@@ -1,24 +1,36 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useGameStore, Memory, memoryThemes, memoryRoles } from '@/store/gameStore';
+import { useAuth } from '@/contexts/AuthContext';
+import { useMemories, Memory } from '@/hooks/useGameData';
 import { Plus, Calendar, User, Filter, Search, Heart, Star, Sparkles, X } from 'lucide-react';
 
 type DecadeFilter = 'all' | '1960s' | '1970s' | '1980s' | '1990s' | '2000s' | '2010s' | '2020s';
 
+const memoryThemes = ['Campus Life', 'Friendships', 'Achievements', 'Traditions', 'Learning', 'Events', 'Teachers', 'Other'];
+const memoryRoles = ['Student', 'Alumni', 'Staff', 'Faculty', 'Visitor'];
+
 const MemoryPortal = () => {
-  const { memories, resonatedMemories, resonateWithMemory } = useGameStore();
+  const { user } = useAuth();
+  const { memories, loading, resonateWithMemory, getUserResonances } = useMemories();
+  const [resonatedMemories, setResonatedMemories] = useState<string[]>([]);
   const [selectedDecade, setSelectedDecade] = useState<DecadeFilter>('all');
   const [selectedTheme, setSelectedTheme] = useState<string>('all');
   const [selectedRole, setSelectedRole] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
+  useEffect(() => {
+    if (user) {
+      getUserResonances().then(setResonatedMemories);
+    }
+  }, [user]);
+
   const decades: DecadeFilter[] = ['all', '1960s', '1970s', '1980s', '1990s', '2000s', '2010s', '2020s'];
 
   const approvedMemories = memories.filter((m) => m.status === 'approved');
   
   const featuredMemories = useMemo(() => 
-    approvedMemories.filter((m) => m.featured || m.resonanceCount > 20).slice(0, 2),
+    approvedMemories.filter((m) => m.featured || m.resonance_count > 20).slice(0, 2),
     [approvedMemories]
   );
 
@@ -32,7 +44,7 @@ const MemoryPortal = () => {
         return (
           m.title.toLowerCase().includes(query) ||
           m.story.toLowerCase().includes(query) ||
-          m.authorName?.toLowerCase().includes(query)
+          m.author_name?.toLowerCase().includes(query)
         );
       }
       return true;
@@ -47,6 +59,22 @@ const MemoryPortal = () => {
   };
 
   const hasActiveFilters = selectedDecade !== 'all' || selectedTheme !== 'all' || selectedRole !== 'all' || searchQuery;
+
+  const handleResonate = async (memoryId: string) => {
+    if (!user) return;
+    if (resonatedMemories.includes(memoryId)) return;
+    
+    await resonateWithMemory(memoryId);
+    setResonatedMemories(prev => [...prev, memoryId]);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-20 pb-12 flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pt-20 pb-12">
@@ -104,7 +132,8 @@ const MemoryPortal = () => {
                   memory={memory} 
                   index={index}
                   isResonated={resonatedMemories.includes(memory.id)}
-                  onResonate={() => resonateWithMemory(memory.id)}
+                  onResonate={() => handleResonate(memory.id)}
+                  isLoggedIn={!!user}
                 />
               ))}
             </div>
@@ -269,7 +298,8 @@ const MemoryPortal = () => {
                   memory={memory} 
                   index={index}
                   isResonated={resonatedMemories.includes(memory.id)}
-                  onResonate={() => resonateWithMemory(memory.id)}
+                  onResonate={() => handleResonate(memory.id)}
+                  isLoggedIn={!!user}
                 />
               ))}
             </div>
@@ -301,13 +331,16 @@ interface MemoryCardProps {
   index: number;
   isResonated: boolean;
   onResonate: () => void;
+  isLoggedIn: boolean;
 }
 
-const MemoryCard = ({ memory, index, isResonated, onResonate }: MemoryCardProps) => {
+const MemoryCard = ({ memory, index, isResonated, onResonate, isLoggedIn }: MemoryCardProps) => {
   const handleResonate = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    onResonate();
+    if (isLoggedIn) {
+      onResonate();
+    }
   };
 
   return (
@@ -316,10 +349,10 @@ const MemoryCard = ({ memory, index, isResonated, onResonate }: MemoryCardProps)
       style={{ animationDelay: `${index * 50}ms`, opacity: 0 }}
     >
       <Link to={`/memory-portal/${memory.id}`} className="flex-1">
-        {memory.imageUrl && (
+        {memory.image_url && (
           <div className="aspect-video rounded-xl bg-muted mb-4 overflow-hidden">
             <img
-              src={memory.imageUrl}
+              src={memory.image_url}
               alt={memory.title}
               className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
             />
@@ -349,15 +382,17 @@ const MemoryCard = ({ memory, index, isResonated, onResonate }: MemoryCardProps)
       <div className="flex items-center justify-between text-sm pt-4 border-t border-border">
         <div className="flex items-center gap-2 text-muted-foreground">
           <User className="w-4 h-4" />
-          <span>{memory.anonymous ? 'Anonymous' : memory.authorName}</span>
+          <span>{memory.anonymous ? 'Anonymous' : memory.author_name}</span>
         </div>
         
         <button
           onClick={handleResonate}
-          className={`np-resonance-btn ${isResonated ? 'np-resonance-btn-active' : 'np-resonance-btn-inactive'}`}
+          disabled={!isLoggedIn}
+          className={`np-resonance-btn ${isResonated ? 'np-resonance-btn-active' : 'np-resonance-btn-inactive'} ${!isLoggedIn ? 'opacity-50 cursor-not-allowed' : ''}`}
+          title={isLoggedIn ? 'Resonate with this memory' : 'Sign in to resonate'}
         >
           <Heart className={`w-4 h-4 ${isResonated ? 'fill-current' : ''}`} />
-          <span>{memory.resonanceCount}</span>
+          <span>{memory.resonance_count}</span>
         </button>
       </div>
     </div>
@@ -369,13 +404,16 @@ interface FeaturedMemoryCardProps {
   index: number;
   isResonated: boolean;
   onResonate: () => void;
+  isLoggedIn: boolean;
 }
 
-const FeaturedMemoryCard = ({ memory, index, isResonated, onResonate }: FeaturedMemoryCardProps) => {
+const FeaturedMemoryCard = ({ memory, index, isResonated, onResonate, isLoggedIn }: FeaturedMemoryCardProps) => {
   const handleResonate = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    onResonate();
+    if (isLoggedIn) {
+      onResonate();
+    }
   };
 
   return (
@@ -400,15 +438,16 @@ const FeaturedMemoryCard = ({ memory, index, isResonated, onResonate }: Featured
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <span className="np-badge-primary text-xs">{memory.decade}</span>
-          <span>{memory.anonymous ? 'Anonymous' : memory.authorName}</span>
+          <span>{memory.anonymous ? 'Anonymous' : memory.author_name}</span>
         </div>
         
         <button
           onClick={handleResonate}
-          className={`np-resonance-btn ${isResonated ? 'np-resonance-btn-active' : 'np-resonance-btn-inactive'}`}
+          disabled={!isLoggedIn}
+          className={`np-resonance-btn ${isResonated ? 'np-resonance-btn-active' : 'np-resonance-btn-inactive'} ${!isLoggedIn ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <Heart className={`w-4 h-4 ${isResonated ? 'fill-current' : ''}`} />
-          <span>{memory.resonanceCount}</span>
+          <span>{memory.resonance_count}</span>
         </button>
       </div>
     </Link>

@@ -1,11 +1,16 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useGameStore, memoryThemes, memoryRoles } from '@/store/gameStore';
-import { ArrowLeft, Check, Sparkles, AlertCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useMemories } from '@/hooks/useGameData';
+import { ArrowLeft, Check, Sparkles, AlertCircle, LogIn } from 'lucide-react';
+
+const memoryThemes = ['Campus Life', 'Friendships', 'Achievements', 'Traditions', 'Learning', 'Events', 'Teachers', 'Other'];
+const memoryRoles = ['Student', 'Alumni', 'Staff', 'Faculty', 'Visitor'];
 
 const MemorySubmit = () => {
   const navigate = useNavigate();
-  const { addMemory } = useGameStore();
+  const { user } = useAuth();
+  const { submitMemory } = useMemories();
 
   const [formData, setFormData] = useState({
     title: '',
@@ -13,9 +18,9 @@ const MemorySubmit = () => {
     decade: '',
     theme: '',
     role: '',
-    authorName: '',
+    author_name: '',
     anonymous: false,
-    imageUrl: '',
+    image_url: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -31,8 +36,8 @@ const MemorySubmit = () => {
     if (!formData.story.trim()) newErrors.story = 'Story is required';
     if (formData.story.length < 50) newErrors.story = 'Story should be at least 50 characters';
     if (!formData.decade) newErrors.decade = 'Please select a decade';
-    if (!formData.anonymous && !formData.authorName.trim()) {
-      newErrors.authorName = 'Name is required (or choose anonymous)';
+    if (!formData.anonymous && !formData.author_name.trim()) {
+      newErrors.author_name = 'Name is required (or choose anonymous)';
     }
     
     setErrors(newErrors);
@@ -45,24 +50,53 @@ const MemorySubmit = () => {
     if (!validateForm()) return;
     
     setIsSubmitting(true);
-    
-    // Simulate submission delay for feedback
-    await new Promise(resolve => setTimeout(resolve, 800));
 
-    addMemory({
+    const { error } = await submitMemory({
       title: formData.title,
       story: formData.story,
       decade: formData.decade,
-      theme: formData.theme || undefined,
-      role: formData.role || undefined,
-      imageUrl: formData.imageUrl || undefined,
+      theme: formData.theme || null,
+      role: formData.role || null,
+      image_url: formData.image_url || null,
       anonymous: formData.anonymous,
-      authorName: formData.anonymous ? undefined : formData.authorName,
+      author_name: formData.anonymous ? null : formData.author_name,
     });
 
     setIsSubmitting(false);
-    setSubmitted(true);
+
+    if (error) {
+      setErrors({ submit: error.message });
+    } else {
+      setSubmitted(true);
+    }
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen pt-20 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <LogIn className="w-10 h-10 text-primary" />
+          </div>
+          <h2 className="font-display text-2xl font-bold text-foreground mb-4">
+            Sign In to Share
+          </h2>
+          <p className="text-muted-foreground mb-8">
+            Create an account or sign in to share your NP memory with the community.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link to="/memory-portal" className="np-button-secondary">
+              Browse Memories
+            </Link>
+            <Link to="/auth" className="np-button-primary inline-flex items-center gap-2">
+              <LogIn className="w-5 h-5" />
+              Sign In
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (
@@ -91,9 +125,9 @@ const MemorySubmit = () => {
                   decade: '',
                   theme: '',
                   role: '',
-                  authorName: '',
+                  author_name: '',
                   anonymous: false,
-                  imageUrl: '',
+                  image_url: '',
                 });
               }}
               className="np-button-primary"
@@ -133,6 +167,12 @@ const MemorySubmit = () => {
           <p className="text-muted-foreground mb-8 ml-13">
             Tell us about your NP experience. Your story becomes part of our heritage.
           </p>
+
+          {errors.submit && (
+            <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive">
+              {errors.submit}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Title */}
@@ -259,8 +299,8 @@ const MemorySubmit = () => {
               </label>
               <input
                 type="url"
-                value={formData.imageUrl}
-                onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                value={formData.image_url}
+                onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
                 placeholder="https://example.com/your-image.jpg"
                 className="np-input"
               />
@@ -298,15 +338,15 @@ const MemorySubmit = () => {
                 </label>
                 <input
                   type="text"
-                  value={formData.authorName}
-                  onChange={(e) => setFormData({ ...formData, authorName: e.target.value })}
+                  value={formData.author_name}
+                  onChange={(e) => setFormData({ ...formData, author_name: e.target.value })}
                   placeholder="How should we credit you?"
-                  className={`np-input ${errors.authorName ? 'ring-2 ring-destructive' : ''}`}
+                  className={`np-input ${errors.author_name ? 'ring-2 ring-destructive' : ''}`}
                 />
-                {errors.authorName && (
+                {errors.author_name && (
                   <p className="text-destructive text-sm mt-1 flex items-center gap-1">
                     <AlertCircle className="w-4 h-4" />
-                    {errors.authorName}
+                    {errors.author_name}
                   </p>
                 )}
               </div>
