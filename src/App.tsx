@@ -12,6 +12,7 @@ import QuestsPage from "./pages/Quests";
 import QuestPlay from "./pages/QuestPlay";
 import WalletPage from "./pages/Wallet";
 import VRGallery from "./pages/VRGallery";
+import AdminPortal from "./pages/AdminPortal";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/quests/:questId" element={<QuestPlay />} />
             <Route path="/wallet" element={<WalletPage />} />
             <Route path="/vr-gallery" element={<VRGallery />} />
+            <Route path="/admin" element={<AdminPortal />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

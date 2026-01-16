@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGameStore, quests } from '@/store/gameStore';
 import { Heart, Lightbulb, CheckCircle2, XCircle, ArrowRight, Trophy, Sparkles } from 'lucide-react';
+import { soundManager } from '@/lib/sounds';
+import { celebrateQuestComplete } from '@/lib/confetti';
 
 const QuestPlay = () => {
   const { questId } = useParams<{ questId: string }>();
@@ -65,6 +67,7 @@ const QuestPlay = () => {
     updateQuestProgress(quest.id, correct);
 
     if (correct) {
+      soundManager.playCorrect();
       recordCorrectAnswer();
       const basePoints = 100;
       const newStreak = correctStreak + 1;
@@ -80,6 +83,7 @@ const QuestPlay = () => {
       
       setScore((prev) => prev + basePoints + bonus);
     } else {
+      soundManager.playWrong();
       setCorrectStreak(0);
       loseLife();
     }
@@ -97,8 +101,10 @@ const QuestPlay = () => {
       addPoints(score);
       if (!isQuestCompleted) {
         completeQuest(quest.id);
+        soundManager.playQuestComplete();
+        celebrateQuestComplete();
       }
-      navigate('/quests');
+      setTimeout(() => navigate('/quests'), 1500);
     } else {
       setCurrentQuestionIndex((prev) => prev + 1);
       setSelectedAnswer(null);

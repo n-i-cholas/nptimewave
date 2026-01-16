@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useGameStore, quests, shopItems, achievements } from '@/store/gameStore';
-import { Heart, Coins, ChevronRight, Wallet, Store, Trophy, Target, Flame, CheckCircle2, Lock, Sparkles } from 'lucide-react';
+import { Heart, Coins, ChevronRight, Wallet, Store, Trophy, Target, Flame, CheckCircle2, Lock, Sparkles, BarChart3 } from 'lucide-react';
 import questTimelineIcon from '@/assets/quest-timeline-icon.jpg';
 import questCampusIcon from '@/assets/quest-campus-icon.jpg';
 import questLecturersIcon from '@/assets/quest-lecturers-icon.jpg';
+import Leaderboard from '@/components/Leaderboard';
 
-type QuestsView = 'main' | 'shop' | 'achievements' | 'challenges';
+type QuestsView = 'main' | 'shop' | 'achievements' | 'challenges' | 'leaderboard';
 
 const QuestsPage = () => {
   const { 
@@ -45,6 +46,7 @@ const QuestsPage = () => {
     { key: 'main', label: 'Quests', icon: ChevronRight },
     { key: 'challenges', label: 'Challenges', icon: Target },
     { key: 'achievements', label: 'Badges', icon: Trophy },
+    { key: 'leaderboard', label: 'Leaderboard', icon: BarChart3 },
     { key: 'shop', label: 'Shop', icon: Store },
   ] as const;
 
@@ -290,6 +292,12 @@ const QuestsPage = () => {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {view === 'leaderboard' && (
+          <div className="max-w-2xl mx-auto animate-fade-in">
+            <Leaderboard currentUserPoints={points} />
           </div>
         )}
 
