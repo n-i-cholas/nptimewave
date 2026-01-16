@@ -15,6 +15,7 @@ import WalletPage from "./pages/Wallet";
 import VRGallery from "./pages/VRGallery";
 import AdminPortal from "./pages/AdminPortal";
 import Auth from "./pages/Auth";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,23 +27,22 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <div className="dark">
-            <Navbar />
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/memory-portal" element={<MemoryPortal />} />
-              <Route path="/memory-portal/submit" element={<MemorySubmit />} />
-              <Route path="/memory-portal/:memoryId" element={<MemoryDetail />} />
-              <Route path="/quests" element={<QuestsPage />} />
-              <Route path="/quests/:questId" element={<QuestPlay />} />
-              <Route path="/wallet" element={<WalletPage />} />
-              <Route path="/vr-gallery" element={<VRGallery />} />
-              <Route path="/admin" element={<AdminPortal />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </div>
+          <Navbar />
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/memory-portal" element={<MemoryPortal />} />
+            <Route path="/memory-portal/submit" element={<MemorySubmit />} />
+            <Route path="/memory-portal/:memoryId" element={<MemoryDetail />} />
+            <Route path="/quests" element={<QuestsPage />} />
+            <Route path="/quests/:questId" element={<QuestPlay />} />
+            <Route path="/wallet" element={<WalletPage />} />
+            <Route path="/vr-gallery" element={<VRGallery />} />
+            <Route path="/admin" element={<AdminPortal />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
