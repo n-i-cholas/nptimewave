@@ -1,18 +1,14 @@
 import { Link } from 'react-router-dom';
-import { useGameStore } from '@/store/gameStore';
+import { useAuth } from '@/contexts/AuthContext';
 import FeatureCard from '@/components/FeatureCard';
-import { Flame, Trophy, Target, ChevronRight, Sparkles } from 'lucide-react';
+import { Flame, Trophy, Target, ChevronRight, Sparkles, LogIn } from 'lucide-react';
 import memoryPortalIcon from '@/assets/memory-portal-icon.jpg';
 import questsIcon from '@/assets/quests-icon.jpg';
 import vrGalleryIcon from '@/assets/vr-gallery-icon.jpg';
+import npBackground from '@/assets/np-background.jpg';
 
 const Index = () => {
-  const { streak, unlockedAchievements, dailyChallenges, updateStreak } = useGameStore();
-
-  // Update streak on visit
-  if (typeof window !== 'undefined') {
-    updateStreak();
-  }
+  const { user, profile } = useAuth();
 
   const features = [
     {
@@ -36,10 +32,16 @@ const Index = () => {
     },
   ];
 
-  const activeChallenges = dailyChallenges.filter(c => !c.completed);
-
   return (
-    <div className="min-h-screen pt-20 pb-12 overflow-hidden">
+    <div 
+      className="min-h-screen pt-20 pb-12 overflow-hidden relative"
+      style={{
+        backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.7), rgba(0,0,0,0.85)), url(${npBackground})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+      }}
+    >
       <div className="container mx-auto px-4">
         {/* Hero Section */}
         <section className="py-16 md:py-24 text-center relative">
@@ -71,6 +73,12 @@ const Index = () => {
               <Sparkles className="w-5 h-5" />
               Start Exploring
             </Link>
+            {!user && (
+              <Link to="/auth" className="np-button-secondary inline-flex items-center justify-center gap-2">
+                <LogIn className="w-4 h-4" />
+                Sign In
+              </Link>
+            )}
             <Link to="/vr-gallery" className="np-button-secondary inline-flex items-center justify-center gap-2">
               View Gallery
               <ChevronRight className="w-4 h-4" />
@@ -78,36 +86,34 @@ const Index = () => {
           </div>
         </section>
 
-        {/* Stats Bar */}
-        {(streak > 0 || unlockedAchievements.length > 0 || activeChallenges.length > 0) && (
+        {/* Stats Bar - Only show for logged in users with profile */}
+        {profile && (profile.streak > 0 || profile.total_quests_completed > 0) && (
           <section className="py-6 mb-8">
             <div className="flex flex-wrap justify-center gap-4">
-              {streak > 0 && (
+              {profile.streak > 0 && (
                 <div className="np-streak-badge animate-bounce-in">
                   <Flame className="w-5 h-5" />
-                  <span>{streak} Day Streak!</span>
+                  <span>{profile.streak} Day Streak!</span>
                 </div>
               )}
               
-              {unlockedAchievements.length > 0 && (
+              {profile.total_quests_completed > 0 && (
                 <Link 
                   to="/quests"
                   className="flex items-center gap-2 px-4 py-2 bg-np-gold/20 text-np-gold rounded-full font-medium hover:bg-np-gold/30 transition-colors animate-fade-in"
                 >
                   <Trophy className="w-5 h-5" />
-                  <span>{unlockedAchievements.length} Achievements</span>
+                  <span>{profile.total_quests_completed} Quests Completed</span>
                 </Link>
               )}
 
-              {activeChallenges.length > 0 && (
-                <Link 
-                  to="/quests"
-                  className="flex items-center gap-2 px-4 py-2 bg-primary/20 text-primary rounded-full font-medium hover:bg-primary/30 transition-colors animate-fade-in"
-                >
-                  <Target className="w-5 h-5" />
-                  <span>{activeChallenges.length} Active Challenges</span>
-                </Link>
-              )}
+              <Link 
+                to="/quests"
+                className="flex items-center gap-2 px-4 py-2 bg-primary/20 text-primary rounded-full font-medium hover:bg-primary/30 transition-colors animate-fade-in"
+              >
+                <Target className="w-5 h-5" />
+                <span>Daily Challenges</span>
+              </Link>
             </div>
           </section>
         )}
@@ -124,43 +130,6 @@ const Index = () => {
             ))}
           </div>
         </section>
-
-        {/* Daily Challenges Preview */}
-        {activeChallenges.length > 0 && (
-          <section className="py-12">
-            <div className="np-card p-6 max-w-2xl mx-auto animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.5s' }}>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2">
-                  <Target className="w-5 h-5 text-primary" />
-                  Today's Challenges
-                </h2>
-                <Link to="/quests" className="text-primary text-sm font-medium hover:underline">
-                  View All
-                </Link>
-              </div>
-              
-              <div className="space-y-3">
-                {activeChallenges.slice(0, 2).map((challenge) => (
-                  <div key={challenge.id} className="flex items-center gap-4 p-3 bg-secondary/50 rounded-xl">
-                    <div className="flex-1">
-                      <p className="font-medium text-foreground text-sm">{challenge.title}</p>
-                      <p className="text-muted-foreground text-xs">{challenge.description}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-primary font-bold text-sm">+{challenge.reward}</p>
-                      <div className="w-16 h-1.5 bg-secondary rounded-full overflow-hidden mt-1">
-                        <div 
-                          className="h-full bg-primary rounded-full transition-all duration-500"
-                          style={{ width: `${(challenge.progress / challenge.target) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
 
         {/* About Section */}
         <section className="py-16 text-center">

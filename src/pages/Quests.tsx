@@ -1,46 +1,137 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useGameStore, quests, shopItems, achievements } from '@/store/gameStore';
-import { Heart, Coins, ChevronRight, Wallet, Store, Trophy, Target, Flame, CheckCircle2, Lock, Sparkles, BarChart3 } from 'lucide-react';
-import questTimelineIcon from '@/assets/quest-timeline-icon.jpg';
-import questCampusIcon from '@/assets/quest-campus-icon.jpg';
-import questLecturersIcon from '@/assets/quest-lecturers-icon.jpg';
+import { useAuth } from '@/contexts/AuthContext';
+import { useQuests, useShopItems, useUserProgress, useAchievements } from '@/hooks/useGameData';
+import { Heart, Coins, ChevronRight, Wallet, Store, Trophy, Target, Flame, CheckCircle2, Lock, Sparkles, BarChart3, LogIn } from 'lucide-react';
+import npTimelineIcon from '@/assets/np-timeline-history.png';
+import npCampusIcon from '@/assets/np-campus-quest.webp';
+import npLecturerIcon from '@/assets/np-lecturer.jpg';
 import Leaderboard from '@/components/Leaderboard';
+
+// Achievement definitions
+const achievementsList = [
+  {
+    id: 'history-explorer',
+    name: 'History Explorer',
+    description: 'Complete the Timeline quest',
+    icon: '🏛️',
+    requirement: { type: 'quests_completed' as const, value: 1 },
+  },
+  {
+    id: 'campus-expert',
+    name: 'Campus Expert',
+    description: 'Complete all quest categories',
+    icon: '🎓',
+    requirement: { type: 'quests_completed' as const, value: 3 },
+  },
+  {
+    id: 'streak-starter',
+    name: 'Streak Starter',
+    description: 'Play for 3 days in a row',
+    icon: '🔥',
+    requirement: { type: 'streak' as const, value: 3 },
+  },
+  {
+    id: 'streak-master',
+    name: 'Streak Master',
+    description: 'Play for 7 days in a row',
+    icon: '⚡',
+    requirement: { type: 'streak' as const, value: 7 },
+  },
+  {
+    id: 'point-collector',
+    name: 'Point Collector',
+    description: 'Earn 1000 points total',
+    icon: '💰',
+    requirement: { type: 'points_earned' as const, value: 1000 },
+  },
+  {
+    id: 'memory-keeper',
+    name: 'Memory Keeper',
+    description: 'Share your first memory',
+    icon: '📝',
+    requirement: { type: 'memories_shared' as const, value: 1 },
+  },
+  {
+    id: 'quiz-champion',
+    name: 'Quiz Champion',
+    description: 'Answer 20 questions correctly',
+    icon: '🏆',
+    requirement: { type: 'correct_answers' as const, value: 20 },
+  },
+];
 
 type QuestsView = 'main' | 'shop' | 'achievements' | 'challenges' | 'leaderboard';
 
 const QuestsPage = () => {
-  const { 
-    points, 
-    lives, 
-    maxLives, 
-    completedQuests, 
-    streak,
-    unlockedAchievements,
-    dailyChallenges,
-    questProgress,
-    updateStreak,
-  } = useGameStore();
+  const { user, profile } = useAuth();
+  const { quests, loading: questsLoading } = useQuests();
+  const { items: shopItems, loading: shopLoading } = useShopItems();
+  const { unlockedAchievements } = useAchievements();
+  const { updateStreak, getCompletedQuests } = useUserProgress();
   
   const [view, setView] = useState<QuestsView>('main');
-  const [showAchievementUnlock, setShowAchievementUnlock] = useState<string | null>(null);
+  const [completedQuests, setCompletedQuests] = useState<(string | null)[]>([]);
 
   useEffect(() => {
-    updateStreak();
-  }, []);
+    if (user) {
+      updateStreak();
+      getCompletedQuests().then(setCompletedQuests);
+    }
+  }, [user]);
 
-  const questIcons: Record<string, string> = {
-    'timeline-history': questTimelineIcon,
-    'campus': questCampusIcon,
-    'lecturers': questLecturersIcon,
+  // Map quest categories to images
+  const getQuestIcon = (category: string) => {
+    const categoryLower = category.toLowerCase();
+    if (categoryLower.includes('timeline') || categoryLower.includes('history')) {
+      return npTimelineIcon;
+    } else if (categoryLower.includes('campus')) {
+      return npCampusIcon;
+    } else if (categoryLower.includes('lecturer')) {
+      return npLecturerIcon;
+    }
+    return npTimelineIcon; // default
   };
 
-  const getQuestProgress = (questId: string) => {
-    const progress = questProgress[questId];
-    const quest = quests.find(q => q.id === questId);
-    if (!progress || !quest) return 0;
-    return Math.round((progress.answered / quest.questions.length) * 100);
+  // Calculate achievement progress
+  const getAchievementProgress = (achievement: typeof achievementsList[0]) => {
+    if (!profile) return 0;
+    
+    switch (achievement.requirement.type) {
+      case 'quests_completed':
+        return Math.min(profile.total_quests_completed / achievement.requirement.value, 1);
+      case 'streak':
+        return Math.min(profile.streak / achievement.requirement.value, 1);
+      case 'points_earned':
+        return Math.min(profile.total_points / achievement.requirement.value, 1);
+      case 'correct_answers':
+        return Math.min(profile.total_correct_answers / achievement.requirement.value, 1);
+      default:
+        return 0;
+    }
   };
+
+  const getProgressText = (achievement: typeof achievementsList[0]) => {
+    if (!profile) return '0 / ' + achievement.requirement.value;
+    
+    switch (achievement.requirement.type) {
+      case 'quests_completed':
+        return `${profile.total_quests_completed} / ${achievement.requirement.value}`;
+      case 'streak':
+        return `${profile.streak} / ${achievement.requirement.value} days`;
+      case 'points_earned':
+        return `${profile.total_points} / ${achievement.requirement.value} pts`;
+      case 'correct_answers':
+        return `${profile.total_correct_answers} / ${achievement.requirement.value}`;
+      default:
+        return '0 / ' + achievement.requirement.value;
+    }
+  };
+
+  const points = profile?.total_points || 0;
+  const lives = profile?.lives || 3;
+  const maxLives = profile?.max_lives || 3;
+  const streak = profile?.streak || 0;
 
   const tabs = [
     { key: 'main', label: 'Quests', icon: ChevronRight },
@@ -49,6 +140,30 @@ const QuestsPage = () => {
     { key: 'leaderboard', label: 'Leaderboard', icon: BarChart3 },
     { key: 'shop', label: 'Shop', icon: Store },
   ] as const;
+
+  if (!user) {
+    return (
+      <div className="min-h-screen pt-20 pb-12">
+        <div className="container mx-auto px-4">
+          <div className="max-w-md mx-auto text-center py-16">
+            <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <LogIn className="w-10 h-10 text-primary" />
+            </div>
+            <h1 className="font-display text-3xl font-bold text-foreground mb-4">
+              Sign In to Play
+            </h1>
+            <p className="text-muted-foreground mb-8">
+              Create an account or sign in to start your quest journey, earn points, and unlock achievements!
+            </p>
+            <Link to="/auth" className="np-button-primary inline-flex items-center gap-2">
+              <LogIn className="w-5 h-5" />
+              Sign In / Sign Up
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pt-20 pb-12">
@@ -120,9 +235,6 @@ const QuestsPage = () => {
                 >
                   <Icon className="w-4 h-4" />
                   {tab.label}
-                  {tab.key === 'challenges' && dailyChallenges.filter(c => !c.completed).length > 0 && (
-                    <span className="w-2 h-2 bg-np-red rounded-full animate-pulse" />
-                  )}
                 </button>
               );
             })}
@@ -132,67 +244,77 @@ const QuestsPage = () => {
         {/* Content */}
         {view === 'main' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {quests.map((quest, index) => {
-              const isCompleted = completedQuests.includes(quest.id);
-              const progress = getQuestProgress(quest.id);
-              
-              return (
-                <Link
-                  key={quest.id}
-                  to={lives > 0 ? `/quests/${quest.id}` : '#'}
-                  className={`np-quest-card group animate-fade-in-up ${lives === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  style={{ animationDelay: `${index * 100}ms`, opacity: 0 }}
-                  onClick={(e) => lives === 0 && e.preventDefault()}
-                >
-                  <div className="aspect-square rounded-xl overflow-hidden bg-card mb-4 relative">
-                    <img
-                      src={questIcons[quest.id]}
-                      alt={quest.category}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    {/* Overlay gradient */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                    
-                    {/* Quest icon */}
-                    <div className="absolute top-3 left-3 text-2xl bg-black/30 backdrop-blur-sm rounded-lg p-2">
-                      {quest.icon}
+            {questsLoading ? (
+              <div className="col-span-3 text-center py-12">
+                <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto" />
+              </div>
+            ) : quests.length === 0 ? (
+              <div className="col-span-3 text-center py-12 text-muted-foreground">
+                No quests available yet. Check back soon!
+              </div>
+            ) : (
+              quests.map((quest, index) => {
+                const isCompleted = completedQuests.includes(quest.id);
+                const totalQuestions = quest.questions.length;
+                
+                return (
+                  <Link
+                    key={quest.id}
+                    to={lives > 0 ? `/quests/${quest.id}` : '#'}
+                    className={`np-quest-card group animate-fade-in-up ${lives === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    style={{ animationDelay: `${index * 100}ms`, opacity: 0 }}
+                    onClick={(e) => lives === 0 && e.preventDefault()}
+                  >
+                    <div className="aspect-square rounded-xl overflow-hidden bg-card mb-4 relative">
+                      <img
+                        src={getQuestIcon(quest.category)}
+                        alt={quest.category}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      {/* Overlay gradient */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                      
+                      {/* Quest icon */}
+                      <div className="absolute top-3 left-3 text-2xl bg-black/30 backdrop-blur-sm rounded-lg p-2">
+                        {quest.icon}
+                      </div>
+                      
+                      {/* Completion badge */}
+                      {isCompleted && (
+                        <div className="absolute top-3 right-3 bg-success text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1">
+                          <CheckCircle2 className="w-4 h-4" />
+                          Done
+                        </div>
+                      )}
                     </div>
                     
-                    {/* Completion badge */}
-                    {isCompleted && (
-                      <div className="absolute top-3 right-3 bg-success text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1">
-                        <CheckCircle2 className="w-4 h-4" />
-                        Done
+                    <div className="p-4">
+                      <h3 className="font-display text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
+                        {quest.category}
+                      </h3>
+                      
+                      {/* Progress info */}
+                      <div className="mb-3">
+                        <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                          <span>{totalQuestions} questions</span>
+                          <span>{isCompleted ? '100%' : '0%'} complete</span>
+                        </div>
+                        <div className="np-progress-bar">
+                          <div className="np-progress-fill" style={{ width: isCompleted ? '100%' : '0%' }} />
+                        </div>
                       </div>
-                    )}
-                  </div>
-                  
-                  <div className="p-4">
-                    <h3 className="font-display text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
-                      {quest.category}
-                    </h3>
-                    
-                    {/* Progress bar */}
-                    <div className="mb-3">
-                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                        <span>{quest.questions.length} questions</span>
-                        <span>{progress}% complete</span>
-                      </div>
-                      <div className="np-progress-bar">
-                        <div className="np-progress-fill" style={{ width: `${progress}%` }} />
+                      
+                      <div className="flex items-center justify-between">
+                        <span className="text-primary text-sm font-medium">
+                          +{totalQuestions * 100} pts possible
+                        </span>
+                        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
                       </div>
                     </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <span className="text-primary text-sm font-medium">
-                        +{quest.questions.length * 100} pts possible
-                      </span>
-                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
+                  </Link>
+                );
+              })
+            )}
           </div>
         )}
 
@@ -203,55 +325,11 @@ const QuestsPage = () => {
               <p className="text-muted-foreground">Complete challenges to earn bonus points!</p>
             </div>
 
-            {dailyChallenges.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Target className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No active challenges. Check back tomorrow!</p>
-              </div>
-            ) : (
-              dailyChallenges.map((challenge, index) => (
-                <div
-                  key={challenge.id}
-                  className={`np-card p-5 animate-fade-in-up ${challenge.completed ? 'border-success/50 bg-success/5' : ''}`}
-                  style={{ animationDelay: `${index * 100}ms`, opacity: 0 }}
-                >
-                  <div className="flex items-start gap-4">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                      challenge.completed ? 'bg-success/20' : 'bg-primary/20'
-                    }`}>
-                      {challenge.completed ? (
-                        <CheckCircle2 className="w-6 h-6 text-success" />
-                      ) : (
-                        <Target className="w-6 h-6 text-primary" />
-                      )}
-                    </div>
-                    
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-display font-bold text-foreground">{challenge.title}</h3>
-                        <span className={`font-bold ${challenge.completed ? 'text-success' : 'text-primary'}`}>
-                          +{challenge.reward} pts
-                        </span>
-                      </div>
-                      <p className="text-muted-foreground text-sm mb-3">{challenge.description}</p>
-                      
-                      {/* Progress */}
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 np-progress-bar">
-                          <div 
-                            className={`np-progress-fill ${challenge.completed ? 'bg-success' : ''}`}
-                            style={{ width: `${(challenge.progress / challenge.target) * 100}%` }}
-                          />
-                        </div>
-                        <span className="text-sm font-medium text-muted-foreground">
-                          {challenge.progress}/{challenge.target}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
+            <div className="text-center py-12 text-muted-foreground">
+              <Target className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>Daily challenges coming soon!</p>
+              <p className="text-sm mt-2">Complete quests to earn points in the meantime.</p>
+            </div>
           </div>
         )}
 
@@ -260,13 +338,15 @@ const QuestsPage = () => {
             <div className="text-center mb-8 animate-fade-in">
               <h2 className="font-display text-2xl font-bold text-foreground mb-2">Achievement Badges</h2>
               <p className="text-muted-foreground">
-                {unlockedAchievements.length} of {achievements.length} unlocked
+                {unlockedAchievements.length} of {achievementsList.length} unlocked
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {achievements.map((achievement, index) => {
+              {achievementsList.map((achievement, index) => {
                 const isUnlocked = unlockedAchievements.includes(achievement.id);
+                const progress = getAchievementProgress(achievement);
+                const progressText = getProgressText(achievement);
                 
                 return (
                   <div
@@ -274,19 +354,32 @@ const QuestsPage = () => {
                     className={`${isUnlocked ? 'np-achievement-unlocked' : 'np-achievement-locked'} animate-fade-in-up`}
                     style={{ animationDelay: `${index * 50}ms`, opacity: 0 }}
                   >
-                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-2xl ${
+                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 ${
                       isUnlocked ? 'bg-np-gold/20' : 'bg-muted'
                     }`}>
                       {isUnlocked ? achievement.icon : <Lock className="w-6 h-6 text-muted-foreground" />}
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <h3 className={`font-display font-bold ${isUnlocked ? 'text-foreground' : 'text-muted-foreground'}`}>
                         {achievement.name}
                       </h3>
-                      <p className="text-sm text-muted-foreground">{achievement.description}</p>
+                      <p className="text-sm text-muted-foreground mb-2">{achievement.description}</p>
+                      
+                      {/* Progress bar for locked achievements */}
+                      {!isUnlocked && (
+                        <div className="space-y-1">
+                          <div className="np-progress-bar h-2">
+                            <div 
+                              className="np-progress-fill bg-primary/60"
+                              style={{ width: `${progress * 100}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">{progressText}</p>
+                        </div>
+                      )}
                     </div>
                     {isUnlocked && (
-                      <Sparkles className="w-5 h-5 text-np-gold" />
+                      <Sparkles className="w-5 h-5 text-np-gold flex-shrink-0" />
                     )}
                   </div>
                 );
@@ -308,11 +401,22 @@ const QuestsPage = () => {
               <p className="text-muted-foreground">Redeem your points for exciting rewards!</p>
             </div>
             
-            <div className="space-y-4">
-              {shopItems.map((item, index) => (
-                <ShopItemCard key={item.id} item={item} index={index} />
-              ))}
-            </div>
+            {shopLoading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto" />
+              </div>
+            ) : shopItems.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Store className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No items available yet. Check back soon!</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {shopItems.map((item, index) => (
+                  <ShopItemCard key={item.id} item={item} index={index} userPoints={points} />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -330,19 +434,27 @@ const QuestsPage = () => {
 };
 
 interface ShopItemCardProps {
-  item: typeof shopItems[0];
+  item: {
+    id: string;
+    name: string;
+    description: string;
+    points: number;
+    image: string;
+  };
   index: number;
+  userPoints: number;
 }
 
-const ShopItemCard = ({ item, index }: ShopItemCardProps) => {
-  const { points, purchaseItem } = useGameStore();
+const ShopItemCard = ({ item, index, userPoints }: ShopItemCardProps) => {
+  const { profile } = useAuth();
+  const { removePoints } = useUserProgress();
   const [showConfirm, setShowConfirm] = useState(false);
   const [justPurchased, setJustPurchased] = useState(false);
-  const canAfford = points >= item.points;
+  const canAfford = userPoints >= item.points;
 
-  const handlePurchase = () => {
-    if (canAfford) {
-      purchaseItem(item);
+  const handlePurchase = async () => {
+    if (canAfford && profile) {
+      await removePoints(item.points);
       setShowConfirm(false);
       setJustPurchased(true);
       setTimeout(() => setJustPurchased(false), 2000);

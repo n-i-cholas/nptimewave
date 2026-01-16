@@ -197,6 +197,7 @@ const MemoriesAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
       decade: '2020s',
       theme: '',
       role: '',
+      image_url: null,
       anonymous: false,
       author_name: '',
       status: 'approved',
