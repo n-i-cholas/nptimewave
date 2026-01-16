@@ -14,16 +14,373 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      completed_quests: {
+        Row: {
+          completed_at: string
+          id: string
+          quest_id: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          id?: string
+          quest_id?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          id?: string
+          quest_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "completed_quests_quest_id_fkey"
+            columns: ["quest_id"]
+            isOneToOne: false
+            referencedRelation: "quests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      memories: {
+        Row: {
+          anonymous: boolean
+          author_name: string | null
+          created_at: string
+          decade: string
+          featured: boolean
+          id: string
+          image_url: string | null
+          resonance_count: number
+          role: string | null
+          status: string
+          story: string
+          theme: string | null
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          anonymous?: boolean
+          author_name?: string | null
+          created_at?: string
+          decade: string
+          featured?: boolean
+          id?: string
+          image_url?: string | null
+          resonance_count?: number
+          role?: string | null
+          status?: string
+          story: string
+          theme?: string | null
+          title: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          anonymous?: boolean
+          author_name?: string | null
+          created_at?: string
+          decade?: string
+          featured?: boolean
+          id?: string
+          image_url?: string | null
+          resonance_count?: number
+          role?: string | null
+          status?: string
+          story?: string
+          theme?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      memory_resonances: {
+        Row: {
+          created_at: string
+          id: string
+          memory_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          memory_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          memory_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memory_resonances_memory_id_fkey"
+            columns: ["memory_id"]
+            isOneToOne: false
+            referencedRelation: "memories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          last_played_date: string | null
+          lives: number
+          max_lives: number
+          streak: number
+          total_correct_answers: number
+          total_points: number
+          total_quests_completed: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          last_played_date?: string | null
+          lives?: number
+          max_lives?: number
+          streak?: number
+          total_correct_answers?: number
+          total_points?: number
+          total_quests_completed?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          last_played_date?: string | null
+          lives?: number
+          max_lives?: number
+          streak?: number
+          total_correct_answers?: number
+          total_points?: number
+          total_quests_completed?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quest_questions: {
+        Row: {
+          correct_answer: number
+          created_at: string
+          display_order: number
+          fun_fact: string | null
+          id: string
+          options: Json
+          points: number
+          quest_id: string
+          question: string
+          updated_at: string
+        }
+        Insert: {
+          correct_answer?: number
+          created_at?: string
+          display_order?: number
+          fun_fact?: string | null
+          id?: string
+          options?: Json
+          points?: number
+          quest_id: string
+          question: string
+          updated_at?: string
+        }
+        Update: {
+          correct_answer?: number
+          created_at?: string
+          display_order?: number
+          fun_fact?: string | null
+          id?: string
+          options?: Json
+          points?: number
+          quest_id?: string
+          question?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quest_questions_quest_id_fkey"
+            columns: ["quest_id"]
+            isOneToOne: false
+            referencedRelation: "quests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quests: {
+        Row: {
+          category: string
+          created_at: string
+          display_order: number
+          icon: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          display_order?: number
+          icon?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          display_order?: number
+          icon?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      shop_items: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string
+          id: string
+          image: string
+          name: string
+          points: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description: string
+          id?: string
+          image?: string
+          name: string
+          points: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string
+          id?: string
+          image?: string
+          name?: string
+          points?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_achievements: {
+        Row: {
+          achievement_id: string
+          id: string
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          id?: string
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          id?: string
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_wallet_items: {
+        Row: {
+          id: string
+          item_description: string
+          item_image: string
+          item_name: string
+          purchased_at: string
+          shop_item_id: string | null
+          used: boolean
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          item_description: string
+          item_image: string
+          item_name: string
+          purchased_at?: string
+          shop_item_id?: string | null
+          used?: boolean
+          user_id: string
+        }
+        Update: {
+          id?: string
+          item_description?: string
+          item_image?: string
+          item_name?: string
+          purchased_at?: string
+          shop_item_id?: string | null
+          used?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_wallet_items_shop_item_id_fkey"
+            columns: ["shop_item_id"]
+            isOneToOne: false
+            referencedRelation: "shop_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin: { Args: never; Returns: boolean }
+      is_moderator: { Args: never; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +507,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
