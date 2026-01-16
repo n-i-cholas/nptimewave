@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useGameStore } from '@/store/gameStore';
-import { ArrowLeft, Upload, Check } from 'lucide-react';
+import { useGameStore, memoryThemes, memoryRoles } from '@/store/gameStore';
+import { ArrowLeft, Check, Sparkles, AlertCircle } from 'lucide-react';
 
 const MemorySubmit = () => {
   const navigate = useNavigate();
@@ -11,45 +11,74 @@ const MemorySubmit = () => {
     title: '',
     story: '',
     decade: '',
+    theme: '',
+    role: '',
     authorName: '',
     anonymous: false,
     imageUrl: '',
   });
 
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const decades = ['1960s', '1970s', '1980s', '1990s', '2000s', '2010s', '2020s'];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.title.trim()) newErrors.title = 'Title is required';
+    if (!formData.story.trim()) newErrors.story = 'Story is required';
+    if (formData.story.length < 50) newErrors.story = 'Story should be at least 50 characters';
+    if (!formData.decade) newErrors.decade = 'Please select a decade';
+    if (!formData.anonymous && !formData.authorName.trim()) {
+      newErrors.authorName = 'Name is required (or choose anonymous)';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) return;
+    
+    setIsSubmitting(true);
+    
+    // Simulate submission delay for feedback
+    await new Promise(resolve => setTimeout(resolve, 800));
 
     addMemory({
       title: formData.title,
       story: formData.story,
       decade: formData.decade,
+      theme: formData.theme || undefined,
+      role: formData.role || undefined,
       imageUrl: formData.imageUrl || undefined,
       anonymous: formData.anonymous,
       authorName: formData.anonymous ? undefined : formData.authorName,
     });
 
+    setIsSubmitting(false);
     setSubmitted(true);
   };
 
   if (submitted) {
     return (
       <div className="min-h-screen pt-20 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-4 animate-fade-in">
-          <div className="w-20 h-20 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Check className="w-10 h-10 text-success" />
+        <div className="text-center max-w-md mx-auto px-4 animate-bounce-in">
+          <div className="w-24 h-24 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Check className="w-12 h-12 text-success" />
           </div>
-          <h2 className="font-display text-2xl font-bold text-foreground mb-4">
-            Thank You for Sharing!
+          <h2 className="font-display text-3xl font-bold text-foreground mb-4">
+            Thank You! 🎉
           </h2>
-          <p className="text-muted-foreground mb-8">
+          <p className="text-muted-foreground mb-8 leading-relaxed">
             Your memory has been submitted for review. It will appear in the Memory Portal
-            once approved.
+            once approved. Thank you for sharing your NP story!
           </p>
-          <div className="flex gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/memory-portal" className="np-button-secondary">
               Browse Memories
             </Link>
@@ -60,6 +89,8 @@ const MemorySubmit = () => {
                   title: '',
                   story: '',
                   decade: '',
+                  theme: '',
+                  role: '',
                   authorName: '',
                   anonymous: false,
                   imageUrl: '',
@@ -79,22 +110,27 @@ const MemorySubmit = () => {
     <div className="min-h-screen pt-20 pb-12">
       <div className="container mx-auto px-4 max-w-2xl">
         {/* Back Button */}
-        <div className="py-6">
+        <div className="py-6 animate-fade-in">
           <Link
             to="/memory-portal"
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors group"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
             Back to Memory Portal
           </Link>
         </div>
 
         {/* Form */}
-        <div className="np-card p-8 animate-fade-in">
-          <h1 className="font-display text-3xl font-bold text-foreground mb-2">
-            Share Your Memory
-          </h1>
-          <p className="text-muted-foreground mb-8">
+        <div className="np-card p-8 animate-fade-in-up" style={{ opacity: 0 }}>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-primary" />
+            </div>
+            <h1 className="font-display text-3xl font-bold text-foreground">
+              Share Your Memory
+            </h1>
+          </div>
+          <p className="text-muted-foreground mb-8 ml-13">
             Tell us about your NP experience. Your story becomes part of our heritage.
           </p>
 
@@ -102,121 +138,207 @@ const MemorySubmit = () => {
             {/* Title */}
             <div>
               <label className="block text-foreground font-medium mb-2">
-                Memory Title *
+                Memory Title <span className="text-destructive">*</span>
               </label>
               <input
                 type="text"
-                required
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 placeholder="Give your memory a title"
-                className="w-full px-4 py-3 bg-secondary rounded-xl border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className={`np-input ${errors.title ? 'ring-2 ring-destructive' : ''}`}
               />
+              {errors.title && (
+                <p className="text-destructive text-sm mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-4 h-4" />
+                  {errors.title}
+                </p>
+              )}
             </div>
 
             {/* Story */}
             <div>
               <label className="block text-foreground font-medium mb-2">
-                Your Story *
+                Your Story <span className="text-destructive">*</span>
               </label>
               <textarea
-                required
                 rows={6}
                 value={formData.story}
                 onChange={(e) => setFormData({ ...formData, story: e.target.value })}
-                placeholder="Share the details of your memory..."
-                className="w-full px-4 py-3 bg-secondary rounded-xl border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                placeholder="Share the details of your memory... What happened? Who was there? What made it special?"
+                className={`np-input resize-none ${errors.story ? 'ring-2 ring-destructive' : ''}`}
               />
-            </div>
-
-            {/* Decade */}
-            <div>
-              <label className="block text-foreground font-medium mb-2">
-                Time Period *
-              </label>
-              <select
-                required
-                value={formData.decade}
-                onChange={(e) => setFormData({ ...formData, decade: e.target.value })}
-                className="w-full px-4 py-3 bg-secondary rounded-xl border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="">Select a decade</option>
-                {decades.map((decade) => (
-                  <option key={decade} value={decade}>
-                    {decade}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Image URL (Optional) */}
-            <div>
-              <label className="block text-foreground font-medium mb-2">
-                Image URL (Optional)
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  value={formData.imageUrl}
-                  onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                  placeholder="https://example.com/your-image.jpg"
-                  className="flex-1 px-4 py-3 bg-secondary rounded-xl border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                />
+              <div className="flex justify-between mt-1">
+                {errors.story ? (
+                  <p className="text-destructive text-sm flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" />
+                    {errors.story}
+                  </p>
+                ) : (
+                  <span />
+                )}
+                <span className={`text-sm ${formData.story.length < 50 ? 'text-muted-foreground' : 'text-success'}`}>
+                  {formData.story.length} characters
+                </span>
               </div>
+            </div>
+
+            {/* Decade and Theme Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Decade */}
+              <div>
+                <label className="block text-foreground font-medium mb-2">
+                  Time Period <span className="text-destructive">*</span>
+                </label>
+                <select
+                  value={formData.decade}
+                  onChange={(e) => setFormData({ ...formData, decade: e.target.value })}
+                  className={`np-input ${errors.decade ? 'ring-2 ring-destructive' : ''}`}
+                >
+                  <option value="">Select a decade</option>
+                  {decades.map((decade) => (
+                    <option key={decade} value={decade}>
+                      {decade}
+                    </option>
+                  ))}
+                </select>
+                {errors.decade && (
+                  <p className="text-destructive text-sm mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" />
+                    {errors.decade}
+                  </p>
+                )}
+              </div>
+
+              {/* Theme */}
+              <div>
+                <label className="block text-foreground font-medium mb-2">
+                  Theme <span className="text-muted-foreground text-sm">(optional)</span>
+                </label>
+                <select
+                  value={formData.theme}
+                  onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
+                  className="np-input"
+                >
+                  <option value="">Select a theme</option>
+                  {memoryThemes.map((theme) => (
+                    <option key={theme} value={theme}>
+                      {theme}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Role */}
+            <div>
+              <label className="block text-foreground font-medium mb-2">
+                Your Role <span className="text-muted-foreground text-sm">(optional)</span>
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {memoryRoles.map((role) => (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, role: formData.role === role ? '' : role })}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      formData.role === role
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary text-foreground hover:bg-secondary/80'
+                    }`}
+                  >
+                    {role}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Image URL */}
+            <div>
+              <label className="block text-foreground font-medium mb-2">
+                Image URL <span className="text-muted-foreground text-sm">(optional)</span>
+              </label>
+              <input
+                type="url"
+                value={formData.imageUrl}
+                onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                placeholder="https://example.com/your-image.jpg"
+                className="np-input"
+              />
               <p className="text-sm text-muted-foreground mt-1">
                 Add a photo to bring your memory to life
               </p>
             </div>
 
             {/* Anonymous Toggle */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 p-4 bg-secondary/50 rounded-xl">
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, anonymous: !formData.anonymous })}
-                className={`w-12 h-6 rounded-full transition-colors ${
+                className={`w-12 h-6 rounded-full transition-all duration-300 relative ${
                   formData.anonymous ? 'bg-primary' : 'bg-muted'
                 }`}
               >
                 <div
-                  className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                    formData.anonymous ? 'translate-x-6' : 'translate-x-0.5'
+                  className={`w-5 h-5 rounded-full bg-white shadow-md transition-all duration-300 absolute top-0.5 ${
+                    formData.anonymous ? 'left-6' : 'left-0.5'
                   }`}
                 />
               </button>
-              <span className="text-foreground">Post anonymously</span>
+              <div>
+                <span className="text-foreground font-medium">Post anonymously</span>
+                <p className="text-muted-foreground text-sm">Your name won't be displayed</p>
+              </div>
             </div>
 
             {/* Author Name */}
             {!formData.anonymous && (
               <div className="animate-fade-in">
                 <label className="block text-foreground font-medium mb-2">
-                  Your Name *
+                  Your Name <span className="text-destructive">*</span>
                 </label>
                 <input
                   type="text"
-                  required={!formData.anonymous}
                   value={formData.authorName}
                   onChange={(e) => setFormData({ ...formData, authorName: e.target.value })}
                   placeholder="How should we credit you?"
-                  className="w-full px-4 py-3 bg-secondary rounded-xl border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  className={`np-input ${errors.authorName ? 'ring-2 ring-destructive' : ''}`}
                 />
+                {errors.authorName && (
+                  <p className="text-destructive text-sm mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" />
+                    {errors.authorName}
+                  </p>
+                )}
               </div>
             )}
 
             {/* Review Notice */}
             <div className="bg-primary/10 border border-primary/20 rounded-xl p-4">
               <p className="text-sm text-muted-foreground">
-                <strong className="text-foreground">Note:</strong> All submissions are reviewed before publishing
-                to ensure they align with our community guidelines.
+                <strong className="text-foreground">📝 Note:</strong> All submissions are reviewed before publishing
+                to ensure they align with our community guidelines. This usually takes 1-2 business days.
               </p>
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full np-button-primary py-4 text-lg"
+              disabled={isSubmitting}
+              className={`w-full np-button-primary py-4 text-lg flex items-center justify-center gap-2 ${
+                isSubmitting ? 'opacity-70 cursor-wait' : ''
+              }`}
             >
-              Submit Memory
+              {isSubmitting ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5" />
+                  Submit Memory
+                </>
+              )}
             </button>
           </form>
         </div>

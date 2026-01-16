@@ -1,20 +1,36 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGameStore, quests } from '@/store/gameStore';
-import { Heart, ArrowLeft, X } from 'lucide-react';
+import { Heart, Lightbulb, CheckCircle2, XCircle, ArrowRight, Trophy, Sparkles } from 'lucide-react';
 
 const QuestPlay = () => {
   const { questId } = useParams<{ questId: string }>();
   const navigate = useNavigate();
-  const { lives, addPoints, loseLife, completeQuest, completedQuests } = useGameStore();
+  const { 
+    lives, 
+    addPoints, 
+    loseLife, 
+    completeQuest, 
+    completedQuests,
+    recordCorrectAnswer,
+    updateQuestProgress,
+    updateStreak,
+  } = useGameStore();
   
   const quest = quests.find((q) => q.id === questId);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [showResult, setShowResult] = useState(false);
+  const [showFunFact, setShowFunFact] = useState(false);
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
+  const [correctStreak, setCorrectStreak] = useState(0);
+  const [showStreakBonus, setShowStreakBonus] = useState(false);
+
+  useEffect(() => {
+    updateStreak();
+  }, []);
 
   useEffect(() => {
     if (lives === 0) {
@@ -25,7 +41,12 @@ const QuestPlay = () => {
   if (!quest) {
     return (
       <div className="min-h-screen pt-20 flex items-center justify-center">
-        <p className="text-foreground">Quest not found</p>
+        <div className="text-center animate-fade-in">
+          <p className="text-foreground text-xl mb-4">Quest not found</p>
+          <button onClick={() => navigate('/quests')} className="np-button-primary">
+            Back to Quests
+          </button>
+        </div>
       </div>
     );
   }
@@ -33,6 +54,7 @@ const QuestPlay = () => {
   const currentQuestion = quest.questions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === quest.questions.length - 1;
   const isQuestCompleted = completedQuests.includes(quest.id);
+  const progress = ((currentQuestionIndex + 1) / quest.questions.length) * 100;
 
   const handleAnswerSelect = (answerIndex: number) => {
     if (selectedAnswer !== null || gameOver) return;
@@ -40,21 +62,38 @@ const QuestPlay = () => {
     setSelectedAnswer(answerIndex);
     const correct = answerIndex === currentQuestion.correctAnswer;
     setIsCorrect(correct);
+    updateQuestProgress(quest.id, correct);
 
     if (correct) {
-      setScore((prev) => prev + 100);
+      recordCorrectAnswer();
+      const basePoints = 100;
+      const newStreak = correctStreak + 1;
+      setCorrectStreak(newStreak);
+      
+      // Streak bonus
+      let bonus = 0;
+      if (newStreak >= 3) {
+        bonus = 50;
+        setShowStreakBonus(true);
+        setTimeout(() => setShowStreakBonus(false), 1500);
+      }
+      
+      setScore((prev) => prev + basePoints + bonus);
     } else {
+      setCorrectStreak(0);
       loseLife();
     }
 
     setTimeout(() => {
       setShowResult(true);
-    }, 500);
+      if (currentQuestion.funFact) {
+        setTimeout(() => setShowFunFact(true), 500);
+      }
+    }, 600);
   };
 
   const handleNext = () => {
     if (isLastQuestion) {
-      // Quest completed
       addPoints(score);
       if (!isQuestCompleted) {
         completeQuest(quest.id);
@@ -65,6 +104,7 @@ const QuestPlay = () => {
       setSelectedAnswer(null);
       setIsCorrect(null);
       setShowResult(false);
+      setShowFunFact(false);
     }
   };
 
@@ -79,59 +119,104 @@ const QuestPlay = () => {
     <div className="min-h-screen pt-20 pb-12 bg-background">
       <div className="container mx-auto px-4 max-w-2xl">
         {/* Header */}
-        <div className="py-6">
-          <div className="flex items-center justify-between mb-6">
+        <div className="py-6 animate-fade-in">
+          <div className="flex items-center justify-between mb-4">
             <button
               onClick={handleExit}
-              className="flex items-center gap-2 text-primary font-medium px-4 py-2 bg-np-cyan-light text-np-navy rounded-full"
+              className="px-4 py-2 bg-secondary text-foreground rounded-full font-medium hover:bg-secondary/80 transition-all"
             >
               Exit
             </button>
-            <h2 className="font-display text-xl font-bold text-foreground">
-              {quest.category}
-            </h2>
-            <div className="w-20" />
+            
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{quest.icon}</span>
+              <h2 className="font-display text-lg font-bold text-foreground hidden sm:block">
+                {quest.category}
+              </h2>
+            </div>
+            
+            {/* Lives */}
+            <div className="flex items-center gap-1">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Heart
+                  key={i}
+                  className={`w-6 h-6 transition-all duration-300 ${
+                    i < lives ? 'fill-np-red text-np-red' : 'text-muted-foreground'
+                  } ${i === lives - 1 && lives <= 1 ? 'animate-pulse' : ''}`}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="mb-2">
+            <div className="np-progress-bar h-3">
+              <div 
+                className="np-progress-fill transition-all duration-500" 
+                style={{ width: `${progress}%` }} 
+              />
+            </div>
+          </div>
+          <div className="flex justify-between text-sm text-muted-foreground">
+            <span>Question {currentQuestionIndex + 1} of {quest.questions.length}</span>
+            <span className="text-primary font-medium">Score: {score}</span>
           </div>
         </div>
 
         {gameOver ? (
           /* Game Over Screen */
           <div className="text-center py-16 animate-fade-in">
-            <h2 className="font-display text-3xl font-bold text-np-red mb-4">
+            <div className="w-20 h-20 bg-destructive/20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <XCircle className="w-10 h-10 text-destructive" />
+            </div>
+            <h2 className="font-display text-3xl font-bold text-foreground mb-4">
               No Lives Left!
             </h2>
-            <p className="text-muted-foreground mb-8">
-              Your lives will reset tomorrow. You earned <strong>{score}</strong> points this session.
+            <p className="text-muted-foreground mb-2">
+              Your lives will reset tomorrow.
             </p>
-            <button
-              onClick={handleExit}
-              className="np-button-primary"
-            >
+            <p className="text-primary font-bold text-xl mb-8">
+              You earned {score} points!
+            </p>
+            <button onClick={handleExit} className="np-button-primary">
               Return to Quests
             </button>
           </div>
         ) : (
           /* Question Content */
           <div className="animate-fade-in">
+            {/* Streak Bonus Notification */}
+            {showStreakBonus && (
+              <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 animate-bounce-in">
+                <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-full font-bold flex items-center gap-2 shadow-lg">
+                  <Sparkles className="w-5 h-5" />
+                  Streak Bonus! +50
+                </div>
+              </div>
+            )}
+
             {/* Question */}
-            <div className="mb-8">
-              <p className="text-sm text-muted-foreground mb-2">
-                Question {currentQuestionIndex + 1} of {quest.questions.length}
-              </p>
-              <h3 className="font-display text-2xl font-bold text-foreground">
+            <div className="np-card p-6 mb-8">
+              <h3 className="font-display text-xl md:text-2xl font-bold text-foreground leading-relaxed">
                 {currentQuestion.question}
               </h3>
             </div>
 
             {/* Answer Options */}
-            <div className="grid grid-cols-2 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
               {currentQuestion.options.map((option, index) => {
-                let bgColor = 'bg-white text-np-navy';
+                let stateClasses = 'bg-white text-np-navy hover:scale-[1.02] hover:shadow-lg';
+                let icon = null;
+                
                 if (selectedAnswer !== null) {
                   if (index === currentQuestion.correctAnswer) {
-                    bgColor = 'bg-success text-white';
+                    stateClasses = 'bg-success text-white scale-[1.02] shadow-lg shadow-success/30';
+                    icon = <CheckCircle2 className="w-6 h-6" />;
                   } else if (index === selectedAnswer && !isCorrect) {
-                    bgColor = 'bg-destructive text-white';
+                    stateClasses = 'bg-destructive text-white animate-shake';
+                    icon = <XCircle className="w-6 h-6" />;
+                  } else {
+                    stateClasses = 'bg-white/50 text-np-navy/50';
                   }
                 }
 
@@ -140,37 +225,84 @@ const QuestPlay = () => {
                     key={index}
                     onClick={() => handleAnswerSelect(index)}
                     disabled={selectedAnswer !== null}
-                    className={`np-answer-option ${bgColor} ${
-                      selectedAnswer === null ? 'hover:scale-105' : ''
-                    }`}
+                    className={`np-answer-option ${stateClasses} flex items-center justify-between transition-all duration-300`}
                   >
-                    {option}
+                    <span>{option}</span>
+                    {icon}
                   </button>
                 );
               })}
             </div>
 
-            {/* Result and Next */}
+            {/* Result and Fun Fact */}
             {showResult && (
-              <div className="text-center animate-slide-up">
-                <p className={`text-xl font-bold mb-4 ${isCorrect ? 'text-success' : 'text-destructive'}`}>
-                  {isCorrect ? '✓ Correct! +100 points' : '✗ Wrong answer!'}
-                </p>
+              <div className="space-y-4 animate-slide-up">
+                {/* Result Message */}
+                <div className={`p-4 rounded-xl text-center ${
+                  isCorrect 
+                    ? 'bg-success/20 border border-success/30' 
+                    : 'bg-destructive/20 border border-destructive/30'
+                }`}>
+                  <p className={`text-xl font-bold ${isCorrect ? 'text-success' : 'text-destructive'}`}>
+                    {isCorrect ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <CheckCircle2 className="w-6 h-6" />
+                        Correct! +{100 + (correctStreak >= 3 ? 50 : 0)} points
+                      </span>
+                    ) : (
+                      <span className="flex items-center justify-center gap-2">
+                        <XCircle className="w-6 h-6" />
+                        Wrong answer! -1 Life
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                {/* Fun Fact */}
+                {showFunFact && currentQuestion.funFact && (
+                  <div className="np-card p-5 bg-primary/5 border-primary/20 animate-fade-in-up">
+                    <div className="flex gap-3">
+                      <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Lightbulb className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-primary mb-1">Did you know?</p>
+                        <p className="text-muted-foreground text-sm leading-relaxed">
+                          {currentQuestion.funFact}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Next Button */}
                 <button
                   onClick={handleNext}
-                  className="np-button-primary"
+                  className="w-full np-button-primary py-4 flex items-center justify-center gap-2"
                 >
-                  {isLastQuestion ? 'Complete Quest' : 'Next Question'}
+                  {isLastQuestion ? (
+                    <>
+                      <Trophy className="w-5 h-5" />
+                      Complete Quest
+                    </>
+                  ) : (
+                    <>
+                      Next Question
+                      <ArrowRight className="w-5 h-5" />
+                    </>
+                  )}
                 </button>
               </div>
             )}
 
-            {/* Score Display */}
-            <div className="mt-8 text-center">
-              <p className="text-muted-foreground">
-                Current Score: <span className="text-primary font-bold">{score}</span>
-              </p>
-            </div>
+            {/* Streak Indicator */}
+            {correctStreak >= 2 && !showResult && (
+              <div className="text-center mt-4 animate-pulse">
+                <span className="text-orange-500 font-medium">
+                  🔥 {correctStreak} correct in a row! {correctStreak >= 2 && 'One more for bonus!'}
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>
