@@ -10,30 +10,46 @@ import {
   BarChart3,
   Plus,
   Trash2,
-  Edit2,
   Check,
   X,
   RefreshCw,
-  AlertCircle
+  Lock
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminMemories, useAdminQuests, useAdminShop, useAdminStats } from '@/hooks/useAdminData';
 import { soundManager } from '@/lib/sounds';
-import { Memory, Quest, ShopItem } from '@/hooks/useGameData';
 
 type AdminTab = 'memories' | 'quests' | 'shop' | 'settings' | 'stats';
+
+const ADMIN_PASSWORD = 'admin123';
 
 const AdminPortal = () => {
   const navigate = useNavigate();
   const { user, isAdmin, isModerator, loading: authLoading, signOut } = useAuth();
   const [currentTab, setCurrentTab] = useState<AdminTab>('memories');
   const [saveMessage, setSaveMessage] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
 
+  // Check local storage for admin session
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/auth');
+    const adminSession = sessionStorage.getItem('np-admin-authenticated');
+    if (adminSession === 'true' || isAdmin || isModerator) {
+      setIsAuthenticated(true);
     }
-  }, [user, authLoading, navigate]);
+  }, [isAdmin, isModerator]);
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordInput === ADMIN_PASSWORD) {
+      setIsAuthenticated(true);
+      sessionStorage.setItem('np-admin-authenticated', 'true');
+      setPasswordError('');
+    } else {
+      setPasswordError('Incorrect password. Please try again.');
+    }
+  };
 
   if (authLoading) {
     return (
@@ -43,7 +59,8 @@ const AdminPortal = () => {
     );
   }
 
-  if (!isAdmin && !isModerator) {
+  // Show password gate if not authenticated via role or password
+  if (!isAuthenticated) {
     return (
       <div className="min-h-screen pt-20 pb-12 bg-background">
         <div className="container mx-auto px-4 max-w-md">
@@ -57,20 +74,33 @@ const AdminPortal = () => {
             </button>
 
             <div className="np-card p-8 animate-fade-in text-center">
-              <div className="w-16 h-16 bg-destructive/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <AlertCircle className="w-8 h-8 text-destructive" />
+              <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Lock className="w-8 h-8 text-primary" />
               </div>
-              <h1 className="font-display text-2xl font-bold text-foreground mb-2">Access Denied</h1>
+              <h1 className="font-display text-2xl font-bold text-foreground mb-2">Admin Portal</h1>
               <p className="text-muted-foreground mb-6">
-                You don't have permission to access the Admin Portal. 
-                Only administrators and moderators can access this area.
+                Enter the admin password to access the management portal.
               </p>
-              <button
-                onClick={() => navigate('/')}
-                className="np-button-primary"
-              >
-                Return Home
-              </button>
+              
+              <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                <input
+                  type="password"
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  placeholder="Enter admin password"
+                  className="w-full px-4 py-3 bg-secondary rounded-xl text-foreground border border-border focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+                {passwordError && (
+                  <p className="text-destructive text-sm">{passwordError}</p>
+                )}
+                <button type="submit" className="w-full np-button-primary">
+                  Access Admin Portal
+                </button>
+              </form>
+              
+              <p className="text-xs text-muted-foreground mt-4">
+                Default password: admin123
+              </p>
             </div>
           </div>
         </div>
@@ -82,6 +112,14 @@ const AdminPortal = () => {
     setSaveMessage(message);
     soundManager.playPurchase();
     setTimeout(() => setSaveMessage(''), 3000);
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('np-admin-authenticated');
+    setIsAuthenticated(false);
+    if (user) {
+      signOut();
+    }
   };
 
   const tabs = [
@@ -101,7 +139,7 @@ const AdminPortal = () => {
             <div className="flex items-center gap-4">
               <button
                 onClick={() => navigate('/')}
-                className="p-2 bg-secondary rounded-xl hover:bg-secondary/80 transition-colors"
+                className="p-2 bg-secondary rounded-xl hover:bg-secondary/80 transition-colors border border-border"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
@@ -115,8 +153,8 @@ const AdminPortal = () => {
             </div>
 
             <button
-              onClick={signOut}
-              className="px-4 py-2 bg-secondary text-foreground rounded-xl hover:bg-secondary/80 transition-colors text-sm"
+              onClick={handleLogout}
+              className="px-4 py-2 bg-secondary text-foreground rounded-xl hover:bg-secondary/80 transition-colors text-sm border border-border"
             >
               Logout
             </button>
@@ -124,7 +162,7 @@ const AdminPortal = () => {
 
           {/* Save Message */}
           {saveMessage && (
-            <div className="mb-4 p-3 bg-success/20 border border-success/30 rounded-xl text-success font-medium flex items-center gap-2 animate-fade-in">
+            <div className="mb-4 p-3 bg-success/10 border border-success/30 rounded-xl text-success font-medium flex items-center gap-2 animate-fade-in">
               <Check className="w-5 h-5" />
               {saveMessage}
             </div>
@@ -141,7 +179,7 @@ const AdminPortal = () => {
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all whitespace-nowrap ${
                     currentTab === tab.key
                       ? 'bg-primary text-primary-foreground'
-                      : 'bg-secondary text-foreground hover:bg-secondary/80'
+                      : 'bg-secondary text-foreground hover:bg-secondary/80 border border-border'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -256,20 +294,20 @@ const MemoriesAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
                 value={newMemory.title}
                 onChange={(e) => setNewMemory({ ...newMemory, title: e.target.value })}
                 placeholder="Title"
-                className="w-full px-4 py-3 bg-secondary rounded-xl text-foreground"
+                className="w-full px-4 py-3 bg-secondary rounded-xl text-foreground border border-border"
               />
               <textarea
                 value={newMemory.story}
                 onChange={(e) => setNewMemory({ ...newMemory, story: e.target.value })}
                 placeholder="Story"
                 rows={4}
-                className="w-full px-4 py-3 bg-secondary rounded-xl text-foreground resize-none"
+                className="w-full px-4 py-3 bg-secondary rounded-xl text-foreground resize-none border border-border"
               />
               <div className="grid grid-cols-2 gap-3">
                 <select
                   value={newMemory.decade}
                   onChange={(e) => setNewMemory({ ...newMemory, decade: e.target.value })}
-                  className="px-4 py-3 bg-secondary rounded-xl text-foreground"
+                  className="px-4 py-3 bg-secondary rounded-xl text-foreground border border-border"
                 >
                   {['1960s', '1970s', '1980s', '1990s', '2000s', '2010s', '2020s'].map(d => (
                     <option key={d} value={d}>{d}</option>
@@ -280,7 +318,7 @@ const MemoriesAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
                   value={newMemory.theme}
                   onChange={(e) => setNewMemory({ ...newMemory, theme: e.target.value })}
                   placeholder="Theme"
-                  className="px-4 py-3 bg-secondary rounded-xl text-foreground"
+                  className="px-4 py-3 bg-secondary rounded-xl text-foreground border border-border"
                 />
               </div>
               <input
@@ -288,7 +326,7 @@ const MemoriesAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
                 value={newMemory.author_name}
                 onChange={(e) => setNewMemory({ ...newMemory, author_name: e.target.value })}
                 placeholder="Author Name"
-                className="w-full px-4 py-3 bg-secondary rounded-xl text-foreground"
+                className="w-full px-4 py-3 bg-secondary rounded-xl text-foreground border border-border"
               />
               <div className="flex gap-4">
                 <label className="flex items-center gap-2">
@@ -301,7 +339,7 @@ const MemoriesAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
                 </label>
               </div>
               <div className="flex gap-3">
-                <button onClick={() => setShowCreateForm(false)} className="flex-1 py-3 bg-secondary text-foreground rounded-xl">
+                <button onClick={() => setShowCreateForm(false)} className="flex-1 py-3 bg-secondary text-foreground rounded-xl border border-border">
                   Cancel
                 </button>
                 <button onClick={handleCreate} className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl font-medium">
@@ -322,15 +360,15 @@ const MemoriesAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
                   <h3 className="font-bold text-foreground">{memory.title}</h3>
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                     memory.status === 'approved' 
-                      ? 'bg-success/20 text-success' 
+                      ? 'bg-success/10 text-success' 
                       : memory.status === 'rejected'
-                      ? 'bg-destructive/20 text-destructive'
-                      : 'bg-warning/20 text-warning'
+                      ? 'bg-destructive/10 text-destructive'
+                      : 'bg-warning/10 text-warning'
                   }`}>
                     {memory.status}
                   </span>
                   {memory.featured && (
-                    <span className="px-2 py-0.5 bg-np-gold/20 text-np-gold rounded-full text-xs font-medium">
+                    <span className="px-2 py-0.5 bg-np-gold/10 text-np-gold rounded-full text-xs font-medium">
                       Featured
                     </span>
                   )}
@@ -349,7 +387,7 @@ const MemoriesAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
                   onClick={() => handleToggleFeatured(memory.id, memory.featured)}
                   className={`p-2 rounded-lg transition-colors ${
                     memory.featured 
-                      ? 'bg-np-gold/20 text-np-gold' 
+                      ? 'bg-np-gold/10 text-np-gold' 
                       : 'bg-secondary text-muted-foreground hover:text-foreground'
                   }`}
                   title="Toggle Featured"
@@ -360,14 +398,14 @@ const MemoriesAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
                   <>
                     <button
                       onClick={() => handleStatusUpdate(memory.id, 'approved')}
-                      className="p-2 bg-success/20 text-success rounded-lg hover:bg-success/30 transition-colors"
+                      className="p-2 bg-success/10 text-success rounded-lg hover:bg-success/20 transition-colors"
                       title="Approve"
                     >
                       <Check className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleStatusUpdate(memory.id, 'rejected')}
-                      className="p-2 bg-destructive/20 text-destructive rounded-lg hover:bg-destructive/30 transition-colors"
+                      className="p-2 bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20 transition-colors"
                       title="Reject"
                     >
                       <X className="w-4 h-4" />
@@ -376,7 +414,7 @@ const MemoriesAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
                 ) : (
                   <button
                     onClick={() => handleStatusUpdate(memory.id, 'pending')}
-                    className="p-2 bg-warning/20 text-warning rounded-lg hover:bg-warning/30 transition-colors"
+                    className="p-2 bg-warning/10 text-warning rounded-lg hover:bg-warning/20 transition-colors"
                     title="Set to Pending"
                   >
                     <RefreshCw className="w-4 h-4" />
@@ -384,7 +422,7 @@ const MemoriesAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
                 )}
                 <button
                   onClick={() => handleDelete(memory.id)}
-                  className="p-2 bg-destructive/20 text-destructive rounded-lg hover:bg-destructive/30 transition-colors"
+                  className="p-2 bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20 transition-colors"
                   title="Delete"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -466,7 +504,7 @@ const QuestsAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between">
         <h2 className="font-display text-xl font-bold text-foreground">Manage Quests</h2>
         <button onClick={() => setShowAddQuest(true)} className="np-button-primary px-4 py-2 text-sm flex items-center gap-2">
           <Plus className="w-4 h-4" />
@@ -476,27 +514,31 @@ const QuestsAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
 
       {/* Add Quest Modal */}
       {showAddQuest && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
           <div className="bg-card rounded-2xl p-6 max-w-md w-full mx-4 border border-border">
-            <h3 className="font-display text-xl font-bold mb-4">Create New Quest</h3>
+            <h3 className="font-display text-xl font-bold text-foreground mb-4">Add New Quest</h3>
             <div className="space-y-4">
               <input
                 type="text"
                 value={newQuest.category}
                 onChange={(e) => setNewQuest({ ...newQuest, category: e.target.value })}
-                placeholder="Quest Category Name"
-                className="w-full px-4 py-3 bg-secondary rounded-xl text-foreground"
+                placeholder="Quest Category (e.g., NP's History)"
+                className="w-full px-4 py-3 bg-secondary rounded-xl text-foreground border border-border"
               />
               <input
                 type="text"
                 value={newQuest.icon}
                 onChange={(e) => setNewQuest({ ...newQuest, icon: e.target.value })}
-                placeholder="Icon (emoji)"
-                className="w-full px-4 py-3 bg-secondary rounded-xl text-foreground"
+                placeholder="Icon emoji"
+                className="w-full px-4 py-3 bg-secondary rounded-xl text-foreground border border-border"
               />
               <div className="flex gap-3">
-                <button onClick={() => setShowAddQuest(false)} className="flex-1 py-3 bg-secondary rounded-xl">Cancel</button>
-                <button onClick={handleCreateQuest} className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl font-medium">Create</button>
+                <button onClick={() => setShowAddQuest(false)} className="flex-1 py-3 bg-secondary text-foreground rounded-xl border border-border">
+                  Cancel
+                </button>
+                <button onClick={handleCreateQuest} className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl font-medium">
+                  Create
+                </button>
               </div>
             </div>
           </div>
@@ -504,7 +546,7 @@ const QuestsAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
       )}
 
       {quests.map((quest) => (
-        <div key={quest.id} className="np-card p-5">
+        <div key={quest.id} className="np-card p-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <span className="text-2xl">{quest.icon}</span>
@@ -514,13 +556,13 @@ const QuestsAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowAddQuestion(quest.id)}
-                className="p-2 bg-primary/20 text-primary rounded-lg hover:bg-primary/30"
+                className="px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-sm font-medium hover:bg-primary/20"
               >
-                <Plus className="w-4 h-4" />
+                + Add Question
               </button>
               <button
                 onClick={() => handleDeleteQuest(quest.id)}
-                className="p-2 bg-destructive/20 text-destructive rounded-lg hover:bg-destructive/30"
+                className="p-2 bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -529,19 +571,21 @@ const QuestsAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
 
           {/* Add Question Form */}
           {showAddQuestion === quest.id && (
-            <div className="mb-4 p-4 bg-secondary/50 rounded-xl space-y-3">
-              <input
-                type="text"
-                value={newQuestion.question}
-                onChange={(e) => setNewQuestion({ ...newQuestion, question: e.target.value })}
-                placeholder="Question"
-                className="w-full px-4 py-2 bg-card rounded-lg text-foreground"
-              />
-              <div className="grid grid-cols-2 gap-2">
+            <div className="mb-4 p-4 bg-secondary/50 rounded-xl border border-border">
+              <h4 className="font-bold text-foreground mb-3">Add New Question</h4>
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={newQuestion.question}
+                  onChange={(e) => setNewQuestion({ ...newQuestion, question: e.target.value })}
+                  placeholder="Question text"
+                  className="w-full px-4 py-2 bg-card rounded-xl text-foreground border border-border"
+                />
                 {newQuestion.options.map((opt, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <input
                       type="radio"
+                      name="correctAnswer"
                       checked={newQuestion.correct_answer === i}
                       onChange={() => setNewQuestion({ ...newQuestion, correct_answer: i })}
                     />
@@ -549,78 +593,128 @@ const QuestsAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
                       type="text"
                       value={opt}
                       onChange={(e) => {
-                        const opts = [...newQuestion.options];
-                        opts[i] = e.target.value;
-                        setNewQuestion({ ...newQuestion, options: opts });
+                        const newOpts = [...newQuestion.options];
+                        newOpts[i] = e.target.value;
+                        setNewQuestion({ ...newQuestion, options: newOpts });
                       }}
                       placeholder={`Option ${i + 1}`}
-                      className="flex-1 px-3 py-2 bg-card rounded-lg text-foreground text-sm"
+                      className="flex-1 px-4 py-2 bg-card rounded-xl text-foreground border border-border"
                     />
                   </div>
                 ))}
-              </div>
-              <input
-                type="text"
-                value={newQuestion.fun_fact}
-                onChange={(e) => setNewQuestion({ ...newQuestion, fun_fact: e.target.value })}
-                placeholder="Fun Fact"
-                className="w-full px-4 py-2 bg-card rounded-lg text-foreground"
-              />
-              <div className="flex gap-2">
-                <button onClick={() => setShowAddQuestion(null)} className="flex-1 py-2 bg-card rounded-lg">Cancel</button>
-                <button onClick={() => handleCreateQuestion(quest.id)} className="flex-1 py-2 bg-primary text-primary-foreground rounded-lg">Add</button>
+                <input
+                  type="text"
+                  value={newQuestion.fun_fact}
+                  onChange={(e) => setNewQuestion({ ...newQuestion, fun_fact: e.target.value })}
+                  placeholder="Fun fact (optional)"
+                  className="w-full px-4 py-2 bg-card rounded-xl text-foreground border border-border"
+                />
+                <div className="flex gap-2">
+                  <button onClick={() => setShowAddQuestion(null)} className="px-4 py-2 bg-secondary text-foreground rounded-xl border border-border">
+                    Cancel
+                  </button>
+                  <button onClick={() => handleCreateQuestion(quest.id)} className="px-4 py-2 bg-primary text-primary-foreground rounded-xl">
+                    Add Question
+                  </button>
+                </div>
               </div>
             </div>
           )}
 
-          <div className="space-y-3">
-            {quest.questions.map((question, qIndex) => (
-              <div key={question.id} className="bg-secondary/50 rounded-xl p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <p className="font-medium text-foreground mb-2">
-                      Q{qIndex + 1}: {question.question}
-                    </p>
-                    <div className="grid grid-cols-2 gap-2 mb-2">
-                      {question.options.map((opt, i) => (
-                        <span 
-                          key={i} 
-                          className={`text-sm px-2 py-1 rounded ${
-                            i === question.correct_answer 
-                              ? 'bg-success/20 text-success' 
-                              : 'bg-card text-muted-foreground'
-                          }`}
-                        >
-                          {i === question.correct_answer && '✓ '}{opt}
-                        </span>
-                      ))}
-                    </div>
-                    {question.fun_fact && (
-                      <p className="text-xs text-muted-foreground italic">
-                        💡 {question.fun_fact}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setEditingQuestion({ questId: quest.id, questionId: question.id })}
-                      className="p-2 bg-card rounded-lg hover:bg-card/80"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteQuestion(question.id)}
-                      className="p-2 bg-destructive/20 text-destructive rounded-lg hover:bg-destructive/30"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
+          {/* Questions List */}
+          <div className="space-y-2">
+            {quest.questions.map((question, idx) => (
+              <QuestionItem
+                key={question.id}
+                question={question}
+                index={idx}
+                isEditing={editingQuestion?.questionId === question.id}
+                onEdit={() => setEditingQuestion({ questId: quest.id, questionId: question.id })}
+                onSave={(updates) => handleUpdateQuestion(question.id, updates)}
+                onCancel={() => setEditingQuestion(null)}
+                onDelete={() => handleDeleteQuestion(question.id)}
+              />
             ))}
           </div>
         </div>
       ))}
+
+      {quests.length === 0 && (
+        <div className="text-center py-12 text-muted-foreground">
+          <HelpCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <p>No quests yet. Create one to get started!</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Question Item Component
+const QuestionItem = ({ question, index, isEditing, onEdit, onSave, onCancel, onDelete }: any) => {
+  const [editData, setEditData] = useState({
+    question: question.question,
+    options: [...question.options],
+    correct_answer: question.correct_answer,
+    fun_fact: question.fun_fact || '',
+  });
+
+  if (isEditing) {
+    return (
+      <div className="p-3 bg-secondary/50 rounded-xl border border-border">
+        <input
+          type="text"
+          value={editData.question}
+          onChange={(e) => setEditData({ ...editData, question: e.target.value })}
+          className="w-full px-3 py-2 bg-card rounded-lg text-foreground border border-border mb-2"
+        />
+        {editData.options.map((opt: string, i: number) => (
+          <div key={i} className="flex items-center gap-2 mb-2">
+            <input
+              type="radio"
+              checked={editData.correct_answer === i}
+              onChange={() => setEditData({ ...editData, correct_answer: i })}
+            />
+            <input
+              type="text"
+              value={opt}
+              onChange={(e) => {
+                const newOpts = [...editData.options];
+                newOpts[i] = e.target.value;
+                setEditData({ ...editData, options: newOpts });
+              }}
+              className="flex-1 px-3 py-2 bg-card rounded-lg text-foreground border border-border"
+            />
+          </div>
+        ))}
+        <input
+          type="text"
+          value={editData.fun_fact}
+          onChange={(e) => setEditData({ ...editData, fun_fact: e.target.value })}
+          placeholder="Fun fact"
+          className="w-full px-3 py-2 bg-card rounded-lg text-foreground border border-border mb-2"
+        />
+        <div className="flex gap-2">
+          <button onClick={onCancel} className="px-3 py-1.5 bg-secondary text-foreground rounded-lg text-sm border border-border">
+            Cancel
+          </button>
+          <button onClick={() => onSave(editData)} className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-sm">
+            Save
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-3 bg-secondary/30 rounded-xl flex items-center gap-3 border border-border/50">
+      <span className="text-muted-foreground text-sm font-medium">{index + 1}.</span>
+      <p className="flex-1 text-foreground text-sm">{question.question}</p>
+      <button onClick={onEdit} className="p-1.5 text-muted-foreground hover:text-foreground">
+        ✏️
+      </button>
+      <button onClick={onDelete} className="p-1.5 text-destructive hover:text-destructive/80">
+        <Trash2 className="w-4 h-4" />
+      </button>
     </div>
   );
 };
@@ -628,9 +722,15 @@ const QuestsAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
 // Shop Admin Section
 const ShopAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
   const { items, loading, createItem, updateItem, deleteItem, refetch } = useAdminShop();
-  const [editingItem, setEditingItem] = useState<ShopItem | null>(null);
-  const [showAddItem, setShowAddItem] = useState(false);
-  const [newItem, setNewItem] = useState({ name: '', description: '', points: 100, image: '🎁' });
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [newItem, setNewItem] = useState({
+    name: '',
+    description: '',
+    points: 100,
+    image: '🎁',
+    active: true,
+  });
 
   useEffect(() => {
     refetch();
@@ -639,20 +739,19 @@ const ShopAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
   const handleCreate = async () => {
     if (!newItem.name) return;
     await createItem(newItem);
-    setNewItem({ name: '', description: '', points: 100, image: '🎁' });
-    setShowAddItem(false);
+    setNewItem({ name: '', description: '', points: 100, image: '🎁', active: true });
+    setShowAddForm(false);
     onSave('Shop item created');
   };
 
-  const handleUpdate = async () => {
-    if (!editingItem) return;
-    await updateItem(editingItem.id, editingItem);
-    setEditingItem(null);
+  const handleUpdate = async (id: string, updates: any) => {
+    await updateItem(id, updates);
+    setEditingId(null);
     onSave('Shop item updated');
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Delete this shop item?')) {
+    if (confirm('Delete this item?')) {
       await deleteItem(id);
       onSave('Shop item deleted');
     }
@@ -666,29 +765,30 @@ const ShopAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-display text-xl font-bold text-foreground">Manage Shop</h2>
-        <button onClick={() => setShowAddItem(true)} className="np-button-primary px-4 py-2 text-sm flex items-center gap-2">
+        <button onClick={() => setShowAddForm(true)} className="np-button-primary px-4 py-2 text-sm flex items-center gap-2">
           <Plus className="w-4 h-4" />
           Add Item
         </button>
       </div>
 
-      {/* Add Item Modal */}
-      {showAddItem && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+      {/* Add Form Modal */}
+      {showAddForm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
           <div className="bg-card rounded-2xl p-6 max-w-md w-full mx-4 border border-border">
-            <h3 className="font-display text-xl font-bold mb-4">Add Shop Item</h3>
+            <h3 className="font-display text-xl font-bold text-foreground mb-4">Add Shop Item</h3>
             <div className="space-y-4">
               <input
+                type="text"
                 value={newItem.name}
                 onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-                placeholder="Item name"
-                className="w-full px-4 py-3 bg-secondary rounded-xl text-foreground"
+                placeholder="Item Name"
+                className="w-full px-4 py-3 bg-secondary rounded-xl text-foreground border border-border"
               />
               <textarea
                 value={newItem.description}
                 onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
                 placeholder="Description"
-                className="w-full px-4 py-3 bg-secondary rounded-xl text-foreground resize-none"
+                className="w-full px-4 py-3 bg-secondary rounded-xl text-foreground resize-none border border-border"
                 rows={2}
               />
               <div className="grid grid-cols-2 gap-3">
@@ -697,72 +797,133 @@ const ShopAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
                   value={newItem.points}
                   onChange={(e) => setNewItem({ ...newItem, points: parseInt(e.target.value) || 0 })}
                   placeholder="Points"
-                  className="px-4 py-3 bg-secondary rounded-xl text-foreground"
+                  className="px-4 py-3 bg-secondary rounded-xl text-foreground border border-border"
                 />
                 <input
+                  type="text"
                   value={newItem.image}
                   onChange={(e) => setNewItem({ ...newItem, image: e.target.value })}
                   placeholder="Emoji"
-                  className="px-4 py-3 bg-secondary rounded-xl text-foreground"
+                  className="px-4 py-3 bg-secondary rounded-xl text-foreground border border-border"
                 />
               </div>
               <div className="flex gap-3">
-                <button onClick={() => setShowAddItem(false)} className="flex-1 py-3 bg-secondary rounded-xl">Cancel</button>
-                <button onClick={handleCreate} className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl font-medium">Create</button>
+                <button onClick={() => setShowAddForm(false)} className="flex-1 py-3 bg-secondary text-foreground rounded-xl border border-border">
+                  Cancel
+                </button>
+                <button onClick={handleCreate} className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl font-medium">
+                  Create
+                </button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="space-y-3">
         {items.map((item) => (
-          <div key={item.id} className="np-card p-5">
-            {editingItem?.id === item.id ? (
-              <div className="space-y-3">
-                <input
-                  value={editingItem.name}
-                  onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
-                  className="w-full px-3 py-2 bg-secondary rounded-lg text-foreground"
-                />
-                <textarea
-                  value={editingItem.description}
-                  onChange={(e) => setEditingItem({ ...editingItem, description: e.target.value })}
-                  className="w-full px-3 py-2 bg-secondary rounded-lg text-foreground resize-none"
-                  rows={2}
-                />
-                <input
-                  type="number"
-                  value={editingItem.points}
-                  onChange={(e) => setEditingItem({ ...editingItem, points: parseInt(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 bg-secondary rounded-lg text-foreground"
-                />
-                <div className="flex gap-2">
-                  <button onClick={handleUpdate} className="flex-1 py-2 bg-success text-white rounded-lg">Save</button>
-                  <button onClick={() => setEditingItem(null)} className="flex-1 py-2 bg-secondary rounded-lg">Cancel</button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-start gap-4">
-                <div className="text-4xl">{item.image}</div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-foreground">{item.name}</h3>
-                  <p className="text-muted-foreground text-sm">{item.description}</p>
-                  <p className="text-primary font-bold mt-2">{item.points} points</p>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <button onClick={() => setEditingItem(item)} className="p-2 bg-secondary rounded-lg">
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => handleDelete(item.id)} className="p-2 bg-destructive/20 text-destructive rounded-lg">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          <ShopItemRow
+            key={item.id}
+            item={item}
+            isEditing={editingId === item.id}
+            onEdit={() => setEditingId(item.id)}
+            onSave={(updates) => handleUpdate(item.id, updates)}
+            onCancel={() => setEditingId(null)}
+            onDelete={() => handleDelete(item.id)}
+          />
         ))}
+
+        {items.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground">
+            <ShoppingBag className="w-12 h-12 mx-auto mb-4 opacity-50" />
+            <p>No shop items yet</p>
+          </div>
+        )}
       </div>
+    </div>
+  );
+};
+
+// Shop Item Row Component
+const ShopItemRow = ({ item, isEditing, onEdit, onSave, onCancel, onDelete }: any) => {
+  const [editData, setEditData] = useState({
+    name: item.name,
+    description: item.description,
+    points: item.points,
+    image: item.image,
+    active: item.active,
+  });
+
+  if (isEditing) {
+    return (
+      <div className="np-card p-4 border border-border">
+        <div className="space-y-3">
+          <input
+            type="text"
+            value={editData.name}
+            onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+            className="w-full px-3 py-2 bg-secondary rounded-xl text-foreground border border-border"
+          />
+          <textarea
+            value={editData.description}
+            onChange={(e) => setEditData({ ...editData, description: e.target.value })}
+            className="w-full px-3 py-2 bg-secondary rounded-xl text-foreground resize-none border border-border"
+            rows={2}
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              type="number"
+              value={editData.points}
+              onChange={(e) => setEditData({ ...editData, points: parseInt(e.target.value) || 0 })}
+              className="px-3 py-2 bg-secondary rounded-xl text-foreground border border-border"
+            />
+            <input
+              type="text"
+              value={editData.image}
+              onChange={(e) => setEditData({ ...editData, image: e.target.value })}
+              className="px-3 py-2 bg-secondary rounded-xl text-foreground border border-border"
+            />
+          </div>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={editData.active}
+              onChange={(e) => setEditData({ ...editData, active: e.target.checked })}
+            />
+            <span className="text-sm text-foreground">Active</span>
+          </label>
+          <div className="flex gap-2">
+            <button onClick={onCancel} className="px-4 py-2 bg-secondary text-foreground rounded-xl border border-border">
+              Cancel
+            </button>
+            <button onClick={() => onSave(editData)} className="px-4 py-2 bg-primary text-primary-foreground rounded-xl">
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`np-card p-4 flex items-center gap-4 ${!item.active ? 'opacity-50' : ''}`}>
+      <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center text-2xl">
+        {item.image}
+      </div>
+      <div className="flex-1">
+        <h3 className="font-bold text-foreground">{item.name}</h3>
+        <p className="text-muted-foreground text-sm">{item.description}</p>
+      </div>
+      <div className="text-right">
+        <span className="text-primary font-bold">{item.points} pts</span>
+        {!item.active && <p className="text-xs text-muted-foreground">Inactive</p>}
+      </div>
+      <button onClick={onEdit} className="p-2 text-muted-foreground hover:text-foreground">
+        ✏️
+      </button>
+      <button onClick={onDelete} className="p-2 text-destructive hover:text-destructive/80">
+        <Trash2 className="w-4 h-4" />
+      </button>
     </div>
   );
 };
@@ -779,26 +940,27 @@ const StatsAdmin = () => {
     return <div className="text-center py-12"><RefreshCw className="w-8 h-8 animate-spin mx-auto text-muted-foreground" /></div>;
   }
 
-  const statCards = [
-    { label: 'Total Users', value: stats.totalUsers, icon: '👥' },
-    { label: 'Total Memories', value: stats.totalMemories, icon: '📝' },
-    { label: 'Pending Memories', value: stats.pendingMemories, icon: '⏳' },
-    { label: 'Total Quests', value: stats.totalQuests, icon: '🎯' },
-    { label: 'Total Questions', value: stats.totalQuestions, icon: '❓' },
-    { label: 'Shop Items', value: stats.totalShopItems, icon: '🛒' },
-  ];
-
   return (
     <div className="space-y-6">
-      <h2 className="font-display text-xl font-bold text-foreground">Platform Statistics</h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        {statCards.map((stat) => (
-          <div key={stat.label} className="np-card p-5 text-center">
-            <div className="text-3xl mb-2">{stat.icon}</div>
-            <div className="text-2xl font-bold text-foreground">{stat.value}</div>
-            <div className="text-sm text-muted-foreground">{stat.label}</div>
-          </div>
-        ))}
+      <h2 className="font-display text-xl font-bold text-foreground">Statistics</h2>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="np-card p-6 text-center">
+          <p className="text-3xl font-bold text-primary">{stats.totalUsers}</p>
+          <p className="text-muted-foreground">Total Users</p>
+        </div>
+        <div className="np-card p-6 text-center">
+          <p className="text-3xl font-bold text-success">{stats.totalMemories}</p>
+          <p className="text-muted-foreground">Total Memories</p>
+        </div>
+        <div className="np-card p-6 text-center">
+          <p className="text-3xl font-bold text-warning">{stats.pendingMemories}</p>
+          <p className="text-muted-foreground">Pending Memories</p>
+        </div>
+        <div className="np-card p-6 text-center">
+          <p className="text-3xl font-bold text-np-gold">{stats.totalQuests}</p>
+          <p className="text-muted-foreground">Total Quests</p>
+        </div>
       </div>
     </div>
   );
@@ -806,29 +968,24 @@ const StatsAdmin = () => {
 
 // Settings Admin Section
 const SettingsAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
-  const { signOut } = useAuth();
-
   return (
-    <div className="space-y-6 max-w-2xl">
-      <h2 className="font-display text-xl font-bold text-foreground">Admin Settings</h2>
+    <div className="space-y-6">
+      <h2 className="font-display text-xl font-bold text-foreground">Settings</h2>
       
-      <div className="np-card p-5">
-        <h3 className="font-bold text-foreground mb-4">Quick Actions</h3>
-        <div className="space-y-3">
-          <button
-            onClick={signOut}
-            className="w-full py-3 bg-secondary text-foreground rounded-xl font-medium hover:bg-secondary/80 transition-colors"
-          >
-            Sign Out
-          </button>
-        </div>
+      <div className="np-card p-6">
+        <h3 className="font-bold text-foreground mb-4">General Settings</h3>
+        <p className="text-muted-foreground text-sm">
+          Settings are managed automatically. All changes in the admin portal sync to the main site in real-time.
+        </p>
       </div>
 
-      <div className="np-card p-5 border-destructive/50">
-        <h3 className="font-bold text-destructive mb-4">Information</h3>
-        <p className="text-muted-foreground text-sm">
-          All changes made in the admin portal are automatically synced with the database. 
-          Users will see updates immediately on their end.
+      <div className="np-card p-6">
+        <h3 className="font-bold text-foreground mb-4">Admin Access</h3>
+        <p className="text-muted-foreground text-sm mb-4">
+          Current password: <code className="bg-secondary px-2 py-1 rounded">admin123</code>
+        </p>
+        <p className="text-xs text-muted-foreground">
+          To change the admin password, contact the system administrator.
         </p>
       </div>
     </div>

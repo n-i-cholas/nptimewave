@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useQuests, useShopItems, useUserProgress, useAchievements } from '@/hooks/useGameData';
-import { Heart, Coins, ChevronRight, Wallet, Store, Trophy, Target, Flame, CheckCircle2, Lock, Sparkles, BarChart3, LogIn } from 'lucide-react';
+import { useQuests, useShopItems, useUserProgress, useAchievements, useWallet } from '@/hooks/useGameData';
+import { Heart, Coins, ChevronRight, Wallet, Store, Trophy, Target, Flame, CheckCircle2, Lock, Sparkles, LogIn } from 'lucide-react';
 import npTimelineIcon from '@/assets/np-timeline-history.png';
 import npCampusIcon from '@/assets/np-campus-quest.webp';
 import npLecturerIcon from '@/assets/np-lecturer.jpg';
-import Leaderboard from '@/components/Leaderboard';
+import { toast } from 'sonner';
 
 // Achievement definitions
 const achievementsList = [
@@ -61,14 +61,15 @@ const achievementsList = [
   },
 ];
 
-type QuestsView = 'main' | 'shop' | 'achievements' | 'challenges' | 'leaderboard';
+type QuestsView = 'main' | 'shop' | 'achievements' | 'challenges';
 
 const QuestsPage = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const { quests, loading: questsLoading } = useQuests();
   const { items: shopItems, loading: shopLoading } = useShopItems();
   const { unlockedAchievements } = useAchievements();
-  const { updateStreak, getCompletedQuests } = useUserProgress();
+  const { updateStreak, getCompletedQuests, removePoints } = useUserProgress();
+  const { purchaseItem } = useWallet();
   
   const [view, setView] = useState<QuestsView>('main');
   const [completedQuests, setCompletedQuests] = useState<(string | null)[]>([]);
@@ -128,6 +129,20 @@ const QuestsPage = () => {
     }
   };
 
+  const handlePurchase = async (item: any) => {
+    if (!profile) return;
+    
+    if (profile.total_points < item.points) {
+      toast.error('Not enough points!');
+      return;
+    }
+
+    await removePoints(item.points);
+    await purchaseItem(item);
+    await refreshProfile();
+    toast.success(`${item.name} added to your wallet!`);
+  };
+
   const points = profile?.total_points || 0;
   const lives = profile?.lives || 3;
   const maxLives = profile?.max_lives || 3;
@@ -137,16 +152,15 @@ const QuestsPage = () => {
     { key: 'main', label: 'Quests', icon: ChevronRight },
     { key: 'challenges', label: 'Challenges', icon: Target },
     { key: 'achievements', label: 'Badges', icon: Trophy },
-    { key: 'leaderboard', label: 'Leaderboard', icon: BarChart3 },
     { key: 'shop', label: 'Shop', icon: Store },
   ] as const;
 
   if (!user) {
     return (
-      <div className="min-h-screen pt-20 pb-12">
+      <div className="min-h-screen pt-20 pb-12 bg-background">
         <div className="container mx-auto px-4">
           <div className="max-w-md mx-auto text-center py-16">
-            <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
               <LogIn className="w-10 h-10 text-primary" />
             </div>
             <h1 className="font-display text-3xl font-bold text-foreground mb-4">
@@ -166,7 +180,7 @@ const QuestsPage = () => {
   }
 
   return (
-    <div className="min-h-screen pt-20 pb-12">
+    <div className="min-h-screen pt-20 pb-12 bg-background">
       <div className="container mx-auto px-4">
         {/* Header */}
         <div className="py-8 animate-fade-in">
@@ -189,19 +203,19 @@ const QuestsPage = () => {
               )}
 
               {/* Points */}
-              <div className="flex items-center gap-2 bg-secondary px-4 py-2 rounded-xl">
+              <div className="flex items-center gap-2 bg-card px-4 py-2 rounded-xl border border-border shadow-sm">
                 <Coins className="w-5 h-5 text-np-gold" />
                 <span className="font-bold text-foreground">{points.toLocaleString()}</span>
               </div>
 
               {/* Lives */}
-              <div className="flex items-center gap-2 bg-secondary px-4 py-2 rounded-xl">
+              <div className="flex items-center gap-2 bg-card px-4 py-2 rounded-xl border border-border shadow-sm">
                 <div className="flex gap-1">
                   {Array.from({ length: maxLives }).map((_, i) => (
                     <Heart
                       key={i}
                       className={`w-5 h-5 transition-all duration-300 ${
-                        i < lives ? 'fill-np-red text-np-red' : 'text-muted-foreground'
+                        i < lives ? 'fill-destructive text-destructive' : 'text-muted-foreground'
                       }`}
                     />
                   ))}
@@ -212,7 +226,7 @@ const QuestsPage = () => {
               {/* Wallet */}
               <Link
                 to="/wallet"
-                className="p-3 rounded-xl bg-secondary text-foreground hover:bg-secondary/80 transition-all duration-200 hover:scale-105"
+                className="p-3 rounded-xl bg-card text-foreground hover:bg-secondary transition-all duration-200 hover:scale-105 border border-border shadow-sm"
               >
                 <Wallet className="w-5 h-5" />
               </Link>
@@ -229,8 +243,8 @@ const QuestsPage = () => {
                   onClick={() => setView(tab.key)}
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all duration-200 whitespace-nowrap ${
                     view === tab.key
-                      ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/30'
-                      : 'bg-secondary text-foreground hover:bg-secondary/80'
+                      ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                      : 'bg-card text-foreground hover:bg-secondary border border-border'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -262,7 +276,7 @@ const QuestsPage = () => {
                     key={quest.id}
                     to={lives > 0 ? `/quests/${quest.id}` : '#'}
                     className={`np-quest-card group animate-fade-in-up ${lives === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    style={{ animationDelay: `${index * 100}ms`, opacity: 0 }}
+                    style={{ animationDelay: `${index * 100}ms`, animationFillMode: 'forwards' }}
                     onClick={(e) => lives === 0 && e.preventDefault()}
                   >
                     <div className="aspect-square rounded-xl overflow-hidden bg-card mb-4 relative">
@@ -275,13 +289,13 @@ const QuestsPage = () => {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                       
                       {/* Quest icon */}
-                      <div className="absolute top-3 left-3 text-2xl bg-black/30 backdrop-blur-sm rounded-lg p-2">
+                      <div className="absolute top-3 left-3 text-2xl bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-sm">
                         {quest.icon}
                       </div>
                       
                       {/* Completion badge */}
                       {isCompleted && (
-                        <div className="absolute top-3 right-3 bg-success text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1">
+                        <div className="absolute top-3 right-3 bg-success text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1 shadow-lg">
                           <CheckCircle2 className="w-4 h-4" />
                           Done
                         </div>
@@ -352,10 +366,10 @@ const QuestsPage = () => {
                   <div
                     key={achievement.id}
                     className={`${isUnlocked ? 'np-achievement-unlocked' : 'np-achievement-locked'} animate-fade-in-up`}
-                    style={{ animationDelay: `${index * 50}ms`, opacity: 0 }}
+                    style={{ animationDelay: `${index * 50}ms`, animationFillMode: 'forwards' }}
                   >
                     <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 ${
-                      isUnlocked ? 'bg-np-gold/20' : 'bg-muted'
+                      isUnlocked ? 'bg-np-gold/10' : 'bg-muted'
                     }`}>
                       {isUnlocked ? achievement.icon : <Lock className="w-6 h-6 text-muted-foreground" />}
                     </div>
@@ -388,12 +402,6 @@ const QuestsPage = () => {
           </div>
         )}
 
-        {view === 'leaderboard' && (
-          <div className="max-w-2xl mx-auto animate-fade-in">
-            <Leaderboard currentUserPoints={points} />
-          </div>
-        )}
-
         {view === 'shop' && (
           <div className="max-w-2xl mx-auto">
             <div className="text-center mb-8 animate-fade-in">
@@ -412,9 +420,38 @@ const QuestsPage = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {shopItems.map((item, index) => (
-                  <ShopItemCard key={item.id} item={item} index={index} userPoints={points} />
-                ))}
+                {shopItems.map((item, index) => {
+                  const canAfford = points >= item.points;
+                  return (
+                    <div
+                      key={item.id}
+                      className="np-shop-card animate-fade-in-up"
+                      style={{ animationDelay: `${index * 100}ms`, animationFillMode: 'forwards' }}
+                    >
+                      <div className="w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center text-3xl">
+                        {item.image}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-display font-bold text-foreground">{item.name}</h3>
+                        <p className="text-muted-foreground text-sm">{item.description}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-primary font-bold text-lg">{item.points} pts</p>
+                        <button
+                          onClick={() => handlePurchase(item)}
+                          disabled={!canAfford}
+                          className={`mt-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                            canAfford
+                              ? 'bg-primary text-primary-foreground hover:scale-105'
+                              : 'bg-muted text-muted-foreground cursor-not-allowed'
+                          }`}
+                        >
+                          {canAfford ? 'Redeem' : 'Not enough'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -424,109 +461,12 @@ const QuestsPage = () => {
         {lives === 0 && view === 'main' && (
           <div className="mt-8 p-4 bg-destructive/10 border border-destructive/20 rounded-xl text-center animate-fade-in">
             <p className="text-destructive font-medium">
-              You've run out of lives! They will reset tomorrow.
+              ❤️ You're out of lives! They'll reset tomorrow.
             </p>
           </div>
         )}
       </div>
     </div>
-  );
-};
-
-interface ShopItemCardProps {
-  item: {
-    id: string;
-    name: string;
-    description: string;
-    points: number;
-    image: string;
-  };
-  index: number;
-  userPoints: number;
-}
-
-const ShopItemCard = ({ item, index, userPoints }: ShopItemCardProps) => {
-  const { profile } = useAuth();
-  const { removePoints } = useUserProgress();
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [justPurchased, setJustPurchased] = useState(false);
-  const canAfford = userPoints >= item.points;
-
-  const handlePurchase = async () => {
-    if (canAfford && profile) {
-      await removePoints(item.points);
-      setShowConfirm(false);
-      setJustPurchased(true);
-      setTimeout(() => setJustPurchased(false), 2000);
-    }
-  };
-
-  return (
-    <>
-      <div
-        className={`np-shop-card animate-fade-in-up ${justPurchased ? 'ring-2 ring-success animate-bounce-in' : ''}`}
-        style={{ animationDelay: `${index * 100}ms`, opacity: 0 }}
-      >
-        <div className="w-20 h-20 bg-np-cyan/30 rounded-xl flex items-center justify-center text-4xl">
-          {item.image}
-        </div>
-        <div className="flex-1">
-          <h3 className="font-display font-bold text-np-navy text-lg">{item.name}</h3>
-          <p className="text-np-navy/70 text-sm">{item.description}</p>
-        </div>
-        <div className="text-right">
-          <p className="font-bold text-np-navy mb-2 flex items-center gap-1 justify-end">
-            <Coins className="w-4 h-4 text-np-gold" />
-            {item.points}
-          </p>
-          <button
-            onClick={() => setShowConfirm(true)}
-            disabled={!canAfford}
-            className={`px-5 py-2 rounded-full font-semibold transition-all duration-300 ${
-              canAfford
-                ? 'bg-np-navy text-white hover:scale-105 hover:shadow-lg active:scale-95'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            {justPurchased ? '✓ Added!' : 'Redeem'}
-          </button>
-        </div>
-      </div>
-
-      {/* Confirmation Modal */}
-      {showConfirm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
-          <div className="bg-card rounded-2xl p-6 max-w-md w-full mx-4 animate-scale-in border border-border">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
-                {item.image}
-              </div>
-              <h3 className="font-display text-xl font-bold text-foreground mb-2">
-                Confirm Redemption
-              </h3>
-              <p className="text-muted-foreground">
-                Redeem <strong className="text-foreground">{item.name}</strong> for{' '}
-                <strong className="text-primary">{item.points} points</strong>?
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowConfirm(false)}
-                className="flex-1 py-3 rounded-full bg-secondary text-foreground font-medium hover:bg-secondary/80 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handlePurchase}
-                className="flex-1 py-3 rounded-full bg-primary text-primary-foreground font-medium hover:scale-105 transition-transform"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
   );
 };
 

@@ -1,25 +1,65 @@
-import { useGameStore } from '@/store/gameStore';
-import { ArrowLeft, Check, Wallet, Gift, ShoppingBag } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { useWallet } from '@/hooks/useGameData';
+import { ArrowLeft, Check, Wallet, Gift, ShoppingBag, LogIn } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 
 const WalletPage = () => {
-  const { wallet, useVoucher, points } = useGameStore();
+  const { user, profile } = useAuth();
+  const { items, loading, useItem } = useWallet();
+  const navigate = useNavigate();
 
-  const unusedItems = wallet.filter((item) => !item.used);
-  const usedItems = wallet.filter((item) => item.used);
-  const hasItems = wallet.length > 0;
+  const unusedItems = items.filter((item) => !item.used);
+  const usedItems = items.filter((item) => item.used);
+  const hasItems = items.length > 0;
   const hasUnusedItems = unusedItems.length > 0;
   const hasUsedItems = usedItems.length > 0;
+  const points = profile?.total_points || 0;
+
+  const handleUseVoucher = async (itemId: string) => {
+    await useItem(itemId);
+  };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen pt-20 pb-12 bg-background">
+        <div className="container mx-auto px-4 max-w-md">
+          <div className="text-center py-16 animate-fade-in">
+            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <LogIn className="w-10 h-10 text-primary" />
+            </div>
+            <h1 className="font-display text-3xl font-bold text-foreground mb-4">
+              Sign In Required
+            </h1>
+            <p className="text-muted-foreground mb-8">
+              Sign in to view your wallet and redeemed rewards.
+            </p>
+            <button onClick={() => navigate('/auth')} className="np-button-primary inline-flex items-center gap-2">
+              <LogIn className="w-5 h-5" />
+              Sign In / Sign Up
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-20 pb-12 bg-background flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen pt-20 pb-12">
+    <div className="min-h-screen pt-20 pb-12 bg-background">
       <div className="container mx-auto px-4 max-w-2xl">
         {/* Header */}
         <div className="py-8 animate-fade-in">
           <div className="flex items-center gap-4 mb-6">
             <Link
               to="/quests"
-              className="p-2 rounded-full bg-secondary hover:bg-secondary/80 transition-all duration-200 hover:scale-105 active:scale-95"
+              className="p-2 rounded-xl bg-secondary hover:bg-secondary/80 transition-all duration-200 hover:scale-105 active:scale-95 border border-border"
             >
               <ArrowLeft className="w-5 h-5 text-foreground" />
             </Link>
@@ -32,7 +72,7 @@ const WalletPage = () => {
           </div>
 
           {/* Points Summary */}
-          <div className="np-card p-6 bg-gradient-to-r from-primary/10 to-cyan-400/10 border-primary/20 mb-8">
+          <div className="np-card p-6 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20 mb-8">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-muted-foreground text-sm mb-1">Available Points</p>
@@ -66,7 +106,7 @@ const WalletPage = () => {
 
         {/* Active Vouchers */}
         {hasUnusedItems && (
-          <section className="mb-8 animate-fade-in-up" style={{ opacity: 0 }}>
+          <section className="mb-8 animate-fade-in-up" style={{ animationFillMode: 'forwards' }}>
             <h2 className="font-display text-xl font-bold text-foreground mb-4 flex items-center gap-2">
               <span className="w-2 h-2 bg-success rounded-full animate-pulse" />
               Active Vouchers
@@ -74,24 +114,24 @@ const WalletPage = () => {
             <div className="space-y-4">
               {unusedItems.map((item, idx) => (
                 <div
-                  key={`${item.id}-${idx}`}
+                  key={item.id}
                   className="np-shop-card animate-fade-in-up"
-                  style={{ animationDelay: `${idx * 100}ms`, opacity: 0 }}
+                  style={{ animationDelay: `${idx * 100}ms`, animationFillMode: 'forwards' }}
                 >
-                  <div className="w-16 h-16 bg-np-cyan/30 rounded-xl flex items-center justify-center text-3xl">
-                    {item.image}
+                  <div className="w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center text-3xl">
+                    {item.item_image}
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-display font-bold text-np-navy">
-                      {item.name}
+                    <h3 className="font-display font-bold text-foreground">
+                      {item.item_name}
                     </h3>
-                    <p className="text-np-navy/70 text-sm">
-                      Redeemed on {new Date(item.purchasedAt).toLocaleDateString()}
+                    <p className="text-muted-foreground text-sm">
+                      Redeemed on {new Date(item.purchased_at).toLocaleDateString()}
                     </p>
                   </div>
                   <button
-                    onClick={() => useVoucher(item.id)}
-                    className="px-5 py-2.5 rounded-full bg-success text-white font-semibold hover:scale-105 transition-all duration-200 active:scale-95 shadow-lg shadow-success/20"
+                    onClick={() => handleUseVoucher(item.id)}
+                    className="px-5 py-2.5 rounded-xl bg-success text-white font-semibold hover:scale-105 transition-all duration-200 active:scale-95 shadow-lg shadow-success/20"
                   >
                     Mark as Used
                   </button>
@@ -103,23 +143,23 @@ const WalletPage = () => {
 
         {/* Used Vouchers */}
         {hasUsedItems && (
-          <section className="animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.2s' }}>
+          <section className="animate-fade-in-up" style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}>
             <h2 className="font-display text-xl font-bold text-foreground mb-4">
               Used Vouchers
             </h2>
             <div className="space-y-3">
               {usedItems.map((item, idx) => (
                 <div
-                  key={`${item.id}-used-${idx}`}
+                  key={item.id}
                   className="np-card opacity-60 p-4"
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 bg-muted rounded-xl flex items-center justify-center text-2xl grayscale">
-                      {item.image}
+                      {item.item_image}
                     </div>
                     <div className="flex-1">
                       <h3 className="font-display font-bold text-foreground">
-                        {item.name}
+                        {item.item_name}
                       </h3>
                       <p className="text-muted-foreground text-sm">
                         Used
@@ -137,7 +177,7 @@ const WalletPage = () => {
 
         {/* Tip */}
         {hasItems && (
-          <div className="mt-8 p-4 bg-secondary/50 rounded-xl text-center animate-fade-in">
+          <div className="mt-8 p-4 bg-secondary/50 rounded-xl text-center animate-fade-in border border-border">
             <p className="text-muted-foreground text-sm">
               💡 Show your voucher to the staff when making a purchase
             </p>

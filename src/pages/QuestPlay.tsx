@@ -1,25 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useGameStore, quests } from '@/store/gameStore';
-import { Heart, Lightbulb, CheckCircle2, XCircle, ArrowRight, Trophy, Sparkles } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useQuests, useUserProgress, useAchievements } from '@/hooks/useGameData';
+import { Heart, Lightbulb, CheckCircle2, XCircle, ArrowRight, Trophy, Sparkles, LogIn } from 'lucide-react';
 import { soundManager } from '@/lib/sounds';
 import { celebrateQuestComplete } from '@/lib/confetti';
 
 const QuestPlay = () => {
   const { questId } = useParams<{ questId: string }>();
   const navigate = useNavigate();
-  const { 
-    lives, 
-    addPoints, 
-    loseLife, 
-    completeQuest, 
-    completedQuests,
-    recordCorrectAnswer,
-    updateQuestProgress,
-    updateStreak,
-  } = useGameStore();
+  const { user, profile, refreshProfile } = useAuth();
+  const { quests, loading: questsLoading } = useQuests();
+  const { addPoints, loseLife, recordCorrectAnswer, completeQuest, updateStreak, getCompletedQuests } = useUserProgress();
+  const { unlockAchievement } = useAchievements();
   
-  const quest = quests.find((q) => q.id === questId);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
@@ -29,20 +23,57 @@ const QuestPlay = () => {
   const [gameOver, setGameOver] = useState(false);
   const [correctStreak, setCorrectStreak] = useState(0);
   const [showStreakBonus, setShowStreakBonus] = useState(false);
+  const [completedQuests, setCompletedQuests] = useState<(string | null)[]>([]);
+
+  const quest = quests.find((q) => q.id === questId);
+  const lives = profile?.lives || 0;
 
   useEffect(() => {
-    updateStreak();
-  }, []);
+    if (user) {
+      updateStreak();
+      getCompletedQuests().then(setCompletedQuests);
+    }
+  }, [user]);
 
   useEffect(() => {
-    if (lives === 0) {
+    if (lives === 0 && !questsLoading && user) {
       setGameOver(true);
     }
-  }, [lives]);
+  }, [lives, questsLoading, user]);
+
+  // Show login prompt if not authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen pt-20 flex items-center justify-center bg-background">
+        <div className="text-center animate-fade-in max-w-md mx-4">
+          <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <LogIn className="w-10 h-10 text-primary" />
+          </div>
+          <h2 className="font-display text-2xl font-bold text-foreground mb-4">
+            Sign In to Play
+          </h2>
+          <p className="text-muted-foreground mb-6">
+            Create an account or sign in to track your progress and earn rewards!
+          </p>
+          <button onClick={() => navigate('/auth')} className="np-button-primary">
+            Sign In / Sign Up
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (questsLoading) {
+    return (
+      <div className="min-h-screen pt-20 flex items-center justify-center bg-background">
+        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
 
   if (!quest) {
     return (
-      <div className="min-h-screen pt-20 flex items-center justify-center">
+      <div className="min-h-screen pt-20 flex items-center justify-center bg-background">
         <div className="text-center animate-fade-in">
           <p className="text-foreground text-xl mb-4">Quest not found</p>
           <button onClick={() => navigate('/quests')} className="np-button-primary">
@@ -58,18 +89,17 @@ const QuestPlay = () => {
   const isQuestCompleted = completedQuests.includes(quest.id);
   const progress = ((currentQuestionIndex + 1) / quest.questions.length) * 100;
 
-  const handleAnswerSelect = (answerIndex: number) => {
+  const handleAnswerSelect = async (answerIndex: number) => {
     if (selectedAnswer !== null || gameOver) return;
 
     setSelectedAnswer(answerIndex);
-    const correct = answerIndex === currentQuestion.correctAnswer;
+    const correct = answerIndex === currentQuestion.correct_answer;
     setIsCorrect(correct);
-    updateQuestProgress(quest.id, correct);
 
     if (correct) {
       soundManager.playCorrect();
-      recordCorrectAnswer();
-      const basePoints = 100;
+      await recordCorrectAnswer();
+      const basePoints = currentQuestion.points || 100;
       const newStreak = correctStreak + 1;
       setCorrectStreak(newStreak);
       
@@ -85,25 +115,41 @@ const QuestPlay = () => {
     } else {
       soundManager.playWrong();
       setCorrectStreak(0);
-      loseLife();
+      await loseLife();
+      await refreshProfile();
+      
+      // Check if out of lives
+      if ((profile?.lives || 1) - 1 === 0) {
+        setGameOver(true);
+      }
     }
 
     setTimeout(() => {
       setShowResult(true);
-      if (currentQuestion.funFact) {
+      if (currentQuestion.fun_fact) {
         setTimeout(() => setShowFunFact(true), 500);
       }
     }, 600);
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (isLastQuestion) {
-      addPoints(score);
+      await addPoints(score);
       if (!isQuestCompleted) {
-        completeQuest(quest.id);
+        await completeQuest(quest.id);
         soundManager.playQuestComplete();
         celebrateQuestComplete();
+        
+        // Check for achievements
+        const updatedCompleted = await getCompletedQuests();
+        if (updatedCompleted.length >= 1) {
+          await unlockAchievement('history-explorer');
+        }
+        if (updatedCompleted.length >= 3) {
+          await unlockAchievement('campus-expert');
+        }
       }
+      await refreshProfile();
       setTimeout(() => navigate('/quests'), 1500);
     } else {
       setCurrentQuestionIndex((prev) => prev + 1);
@@ -114,9 +160,10 @@ const QuestPlay = () => {
     }
   };
 
-  const handleExit = () => {
+  const handleExit = async () => {
     if (score > 0) {
-      addPoints(score);
+      await addPoints(score);
+      await refreshProfile();
     }
     navigate('/quests');
   };
@@ -129,7 +176,7 @@ const QuestPlay = () => {
           <div className="flex items-center justify-between mb-4">
             <button
               onClick={handleExit}
-              className="px-4 py-2 bg-secondary text-foreground rounded-full font-medium hover:bg-secondary/80 transition-all"
+              className="px-4 py-2 bg-secondary text-foreground rounded-xl font-medium hover:bg-secondary/80 transition-all border border-border"
             >
               Exit
             </button>
@@ -143,11 +190,11 @@ const QuestPlay = () => {
             
             {/* Lives */}
             <div className="flex items-center gap-1">
-              {Array.from({ length: 3 }).map((_, i) => (
+              {Array.from({ length: profile?.max_lives || 3 }).map((_, i) => (
                 <Heart
                   key={i}
                   className={`w-6 h-6 transition-all duration-300 ${
-                    i < lives ? 'fill-np-red text-np-red' : 'text-muted-foreground'
+                    i < lives ? 'fill-destructive text-destructive' : 'text-muted-foreground'
                   } ${i === lives - 1 && lives <= 1 ? 'animate-pulse' : ''}`}
                 />
               ))}
@@ -172,7 +219,7 @@ const QuestPlay = () => {
         {gameOver ? (
           /* Game Over Screen */
           <div className="text-center py-16 animate-fade-in">
-            <div className="w-20 h-20 bg-destructive/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <div className="w-20 h-20 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-6">
               <XCircle className="w-10 h-10 text-destructive" />
             </div>
             <h2 className="font-display text-3xl font-bold text-foreground mb-4">
@@ -211,18 +258,18 @@ const QuestPlay = () => {
             {/* Answer Options */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
               {currentQuestion.options.map((option, index) => {
-                let stateClasses = 'bg-white text-np-navy hover:scale-[1.02] hover:shadow-lg';
+                let stateClasses = 'bg-card text-foreground hover:scale-[1.02] hover:shadow-lg hover:border-primary/50';
                 let icon = null;
                 
                 if (selectedAnswer !== null) {
-                  if (index === currentQuestion.correctAnswer) {
-                    stateClasses = 'bg-success text-white scale-[1.02] shadow-lg shadow-success/30';
+                  if (index === currentQuestion.correct_answer) {
+                    stateClasses = 'bg-success text-white scale-[1.02] shadow-lg shadow-success/30 border-success';
                     icon = <CheckCircle2 className="w-6 h-6" />;
                   } else if (index === selectedAnswer && !isCorrect) {
-                    stateClasses = 'bg-destructive text-white animate-shake';
+                    stateClasses = 'bg-destructive text-white animate-shake border-destructive';
                     icon = <XCircle className="w-6 h-6" />;
                   } else {
-                    stateClasses = 'bg-white/50 text-np-navy/50';
+                    stateClasses = 'bg-muted/50 text-muted-foreground border-border';
                   }
                 }
 
@@ -246,14 +293,14 @@ const QuestPlay = () => {
                 {/* Result Message */}
                 <div className={`p-4 rounded-xl text-center ${
                   isCorrect 
-                    ? 'bg-success/20 border border-success/30' 
-                    : 'bg-destructive/20 border border-destructive/30'
+                    ? 'bg-success/10 border border-success/30' 
+                    : 'bg-destructive/10 border border-destructive/30'
                 }`}>
                   <p className={`text-xl font-bold ${isCorrect ? 'text-success' : 'text-destructive'}`}>
                     {isCorrect ? (
                       <span className="flex items-center justify-center gap-2">
                         <CheckCircle2 className="w-6 h-6" />
-                        Correct! +{100 + (correctStreak >= 3 ? 50 : 0)} points
+                        Correct! +{(currentQuestion.points || 100) + (correctStreak >= 3 ? 50 : 0)} points
                       </span>
                     ) : (
                       <span className="flex items-center justify-center gap-2">
@@ -265,16 +312,16 @@ const QuestPlay = () => {
                 </div>
 
                 {/* Fun Fact */}
-                {showFunFact && currentQuestion.funFact && (
+                {showFunFact && currentQuestion.fun_fact && (
                   <div className="np-card p-5 bg-primary/5 border-primary/20 animate-fade-in-up">
                     <div className="flex gap-3">
-                      <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
                         <Lightbulb className="w-5 h-5 text-primary" />
                       </div>
                       <div>
                         <p className="text-sm font-medium text-primary mb-1">Did you know?</p>
                         <p className="text-muted-foreground text-sm leading-relaxed">
-                          {currentQuestion.funFact}
+                          {currentQuestion.fun_fact}
                         </p>
                       </div>
                     </div>
