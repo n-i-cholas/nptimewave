@@ -14,6 +14,7 @@ interface Profile {
   last_played_date: string | null;
   total_correct_answers: number;
   total_quests_completed: number;
+  lives_reset_at?: string | null;
 }
 
 interface AuthContextType {

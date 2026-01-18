@@ -277,19 +277,66 @@ export const useUserProgress = () => {
   };
 
   const loseLife = async () => {
-    if (!profile) return;
-    await updateProfile({ lives: Math.max(0, profile.lives - 1) });
+    if (!profile || !user) return;
+    const newLives = Math.max(0, profile.lives - 1);
+    
+    // If lives hit 0, set cooldown for 1 hour from now
+    if (newLives === 0) {
+      const resetAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+      const { error } = await supabase
+        .from('profiles')
+        .update({ lives: newLives, lives_reset_at: resetAt })
+        .eq('user_id', user.id);
+      
+      if (!error) {
+        await refreshProfile();
+      }
+    } else {
+      await updateProfile({ lives: newLives });
+    }
   };
 
   const resetLives = async () => {
-    if (!profile) return;
-    const { error } = await supabase
-      .from('profiles')
-      .update({ lives: profile.max_lives })
-      .eq('user_id', user?.id);
+    if (!profile || !user) return;
     
-    if (!error) {
-      await refreshProfile();
+    // Check if cooldown has passed
+    if (profile.lives === 0 && profile.lives_reset_at) {
+      const resetTime = new Date(profile.lives_reset_at);
+      if (new Date() >= resetTime) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ lives: profile.max_lives, lives_reset_at: null })
+          .eq('user_id', user.id);
+        
+        if (!error) {
+          await refreshProfile();
+        }
+      }
+    } else if (profile.lives < profile.max_lives) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ lives: profile.max_lives, lives_reset_at: null })
+        .eq('user_id', user.id);
+      
+      if (!error) {
+        await refreshProfile();
+      }
+    }
+  };
+  
+  // Auto-check for lives reset on profile load
+  const checkAndResetLives = async () => {
+    if (!profile || !user) return;
+    
+    if (profile.lives === 0 && profile.lives_reset_at) {
+      const resetTime = new Date(profile.lives_reset_at);
+      if (new Date() >= resetTime) {
+        await supabase
+          .from('profiles')
+          .update({ lives: profile.max_lives, lives_reset_at: null })
+          .eq('user_id', user.id);
+        await refreshProfile();
+      }
     }
   };
 
@@ -345,6 +392,7 @@ export const useUserProgress = () => {
     removePoints,
     loseLife,
     resetLives,
+    checkAndResetLives,
     updateStreak,
     recordCorrectAnswer,
     completeQuest,

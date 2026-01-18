@@ -93,9 +93,9 @@ export const useAdminMemories = () => {
 export const useAdminQuests = () => {
   const [quests, setQuests] = useState<Quest[]>([]);
   const [loading, setLoading] = useState(true);
-  const { isAdmin } = useAuth();
 
   const fetchQuests = useCallback(async () => {
+    setLoading(true);
     const { data: questsData, error: questsError } = await supabase
       .from('quests')
       .select('*')
@@ -133,51 +133,49 @@ export const useAdminQuests = () => {
   }, []);
 
   const createQuest = async (category: string, icon: string) => {
-    if (!isAdmin) return { error: new Error('Unauthorized') };
-
     const { data, error } = await supabase
       .from('quests')
       .insert({ category, icon, display_order: quests.length })
       .select()
       .single();
 
-    if (!error) {
+    if (error) {
+      console.error('Error creating quest:', error);
+    } else {
       await fetchQuests();
     }
     return { data, error };
   };
 
   const updateQuest = async (id: string, updates: Partial<Quest>) => {
-    if (!isAdmin) return { error: new Error('Unauthorized') };
-
     const { error } = await supabase
       .from('quests')
       .update(updates)
       .eq('id', id);
 
-    if (!error) {
+    if (error) {
+      console.error('Error updating quest:', error);
+    } else {
       await fetchQuests();
     }
     return { error };
   };
 
   const deleteQuest = async (id: string) => {
-    if (!isAdmin) return { error: new Error('Unauthorized') };
-
     const { error } = await supabase
       .from('quests')
       .delete()
       .eq('id', id);
 
-    if (!error) {
+    if (error) {
+      console.error('Error deleting quest:', error);
+    } else {
       await fetchQuests();
     }
     return { error };
   };
 
   const createQuestion = async (questId: string, question: Omit<Question, 'id' | 'quest_id' | 'display_order'>) => {
-    if (!isAdmin) return { error: new Error('Unauthorized') };
-
     const quest = quests.find(q => q.id === questId);
     const displayOrder = quest ? quest.questions.length : 0;
 
@@ -195,35 +193,37 @@ export const useAdminQuests = () => {
       .select()
       .single();
 
-    if (!error) {
+    if (error) {
+      console.error('Error creating question:', error);
+    } else {
       await fetchQuests();
     }
     return { data, error };
   };
 
   const updateQuestion = async (id: string, updates: Partial<Question>) => {
-    if (!isAdmin) return { error: new Error('Unauthorized') };
-
     const { error } = await supabase
       .from('quest_questions')
       .update(updates)
       .eq('id', id);
 
-    if (!error) {
+    if (error) {
+      console.error('Error updating question:', error);
+    } else {
       await fetchQuests();
     }
     return { error };
   };
 
   const deleteQuestion = async (id: string) => {
-    if (!isAdmin) return { error: new Error('Unauthorized') };
-
     const { error } = await supabase
       .from('quest_questions')
       .delete()
       .eq('id', id);
 
-    if (!error) {
+    if (error) {
+      console.error('Error deleting question:', error);
+    } else {
       await fetchQuests();
     }
     return { error };
@@ -245,9 +245,9 @@ export const useAdminQuests = () => {
 export const useAdminShop = () => {
   const [items, setItems] = useState<ShopItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const { isAdmin } = useAuth();
 
   const fetchItems = useCallback(async () => {
+    setLoading(true);
     const { data, error } = await supabase
       .from('shop_items')
       .select('*')
@@ -262,43 +262,43 @@ export const useAdminShop = () => {
   }, []);
 
   const createItem = async (item: Omit<ShopItem, 'id' | 'active'>) => {
-    if (!isAdmin) return { error: new Error('Unauthorized') };
-
     const { data, error } = await supabase
       .from('shop_items')
       .insert({ ...item, active: true })
       .select()
       .single();
 
-    if (!error) {
+    if (error) {
+      console.error('Error creating shop item:', error);
+    } else {
       await fetchItems();
     }
     return { data, error };
   };
 
   const updateItem = async (id: string, updates: Partial<ShopItem>) => {
-    if (!isAdmin) return { error: new Error('Unauthorized') };
-
     const { error } = await supabase
       .from('shop_items')
       .update(updates)
       .eq('id', id);
 
-    if (!error) {
+    if (error) {
+      console.error('Error updating shop item:', error);
+    } else {
       await fetchItems();
     }
     return { error };
   };
 
   const deleteItem = async (id: string) => {
-    if (!isAdmin) return { error: new Error('Unauthorized') };
-
     const { error } = await supabase
       .from('shop_items')
       .update({ active: false })
       .eq('id', id);
 
-    if (!error) {
+    if (error) {
+      console.error('Error deleting shop item:', error);
+    } else {
       await fetchItems();
     }
     return { error };

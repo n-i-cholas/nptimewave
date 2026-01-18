@@ -60,16 +60,10 @@ const Index = () => {
       >
         <div className="container mx-auto px-4 text-center relative z-10">
           <div className="animate-fade-in-up" style={{ opacity: 0 }}>
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-white/90 text-sm font-medium mb-6 border border-white/20">
-              <Sparkles className="w-4 h-4" />
-              Celebrating NP's Heritage
-            </div>
-            
-            <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-bold mb-6 tracking-tight text-white">
-              DISCOVER OUR
-              <br />
-              <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                DIGITAL HERITAGE
+            <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-bold mb-6 tracking-tight text-white leading-tight">
+              <span className="block">Discover Our</span>
+              <span className="block bg-gradient-to-r from-cyan-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                Digital Heritage
               </span>
             </h1>
           </div>
@@ -96,12 +90,6 @@ const Index = () => {
             </button>
           </div>
 
-          {/* Scroll indicator */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-float">
-            <div className="w-6 h-10 rounded-full border-2 border-white/30 flex items-start justify-center p-2">
-              <div className="w-1.5 h-3 bg-white/50 rounded-full animate-pulse" />
-            </div>
-          </div>
         </div>
       </section>
 

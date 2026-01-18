@@ -134,6 +134,7 @@ export type Database = {
           id: string
           last_played_date: string | null
           lives: number
+          lives_reset_at: string | null
           max_lives: number
           streak: number
           total_correct_answers: number
@@ -149,6 +150,7 @@ export type Database = {
           id?: string
           last_played_date?: string | null
           lives?: number
+          lives_reset_at?: string | null
           max_lives?: number
           streak?: number
           total_correct_answers?: number
@@ -164,6 +166,7 @@ export type Database = {
           id?: string
           last_played_date?: string | null
           lives?: number
+          lives_reset_at?: string | null
           max_lives?: number
           streak?: number
           total_correct_answers?: number
