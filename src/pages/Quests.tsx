@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuests, useShopItems, useUserProgress, useAchievements, useWallet } from '@/hooks/useGameData';
 import { Heart, Coins, ChevronRight, Wallet, Store, Trophy, Target, Flame, CheckCircle2, Lock, Sparkles, LogIn } from 'lucide-react';
@@ -64,22 +64,48 @@ const achievementsList = [
 type QuestsView = 'main' | 'shop' | 'achievements' | 'challenges';
 
 const QuestsPage = () => {
+  const [searchParams] = useSearchParams();
   const { user, profile, refreshProfile } = useAuth();
   const { quests, loading: questsLoading } = useQuests();
-  const { items: shopItems, loading: shopLoading } = useShopItems();
+  const { items: shopItems, loading: shopLoading, refetch: refetchShopItems } = useShopItems();
   const { unlockedAchievements } = useAchievements();
-  const { updateStreak, getCompletedQuests, removePoints } = useUserProgress();
+  const { updateStreak, getCompletedQuests, removePoints, checkAndResetLives } = useUserProgress();
   const { purchaseItem } = useWallet();
   
-  const [view, setView] = useState<QuestsView>('main');
+  // Get initial tab from URL params
+  const initialTab = searchParams.get('tab') as QuestsView || 'main';
+  const [view, setView] = useState<QuestsView>(initialTab);
   const [completedQuests, setCompletedQuests] = useState<(string | null)[]>([]);
+  const [cooldownTimer, setCooldownTimer] = useState<number>(0);
 
   useEffect(() => {
     if (user) {
       updateStreak();
       getCompletedQuests().then(setCompletedQuests);
+      checkAndResetLives();
     }
   }, [user]);
+  
+  // Update cooldown timer every second
+  useEffect(() => {
+    if (profile?.lives === 0 && profile?.lives_reset_at) {
+      const updateCooldown = () => {
+        const resetTime = new Date(profile.lives_reset_at!).getTime();
+        const remaining = Math.max(0, resetTime - Date.now());
+        setCooldownTimer(remaining);
+        
+        if (remaining === 0) {
+          refreshProfile();
+        }
+      };
+      
+      updateCooldown();
+      const interval = setInterval(updateCooldown, 1000);
+      return () => clearInterval(interval);
+    } else {
+      setCooldownTimer(0);
+    }
+  }, [profile?.lives, profile?.lives_reset_at, refreshProfile]);
 
   // Map quest categories to images
   const getQuestIcon = (category: string) => {
@@ -144,9 +170,18 @@ const QuestsPage = () => {
   };
 
   const points = profile?.total_points || 0;
-  const lives = profile?.lives || 3;
-  const maxLives = profile?.max_lives || 3;
+  const lives = profile?.lives || 5;
+  const maxLives = profile?.max_lives || 5;
   const streak = profile?.streak || 0;
+  
+  // Format cooldown time
+  const formatCooldown = (ms: number) => {
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+  
+  const canPlay = lives > 0 || cooldownTimer === 0;
 
   const tabs = [
     { key: 'main', label: 'Quests', icon: ChevronRight },
@@ -270,14 +305,20 @@ const QuestsPage = () => {
               quests.map((quest, index) => {
                 const isCompleted = completedQuests.includes(quest.id);
                 const totalQuestions = quest.questions.length;
+                const canPlay = lives > 0;
                 
                 return (
                   <Link
                     key={quest.id}
-                    to={lives > 0 ? `/quests/${quest.id}` : '#'}
-                    className={`np-quest-card group animate-fade-in-up ${lives === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    to={canPlay ? `/quests/${quest.id}` : '#'}
+                    className={`np-quest-card group animate-fade-in-up ${!canPlay ? 'opacity-50 cursor-not-allowed' : ''}`}
                     style={{ animationDelay: `${index * 100}ms`, animationFillMode: 'forwards' }}
-                    onClick={(e) => lives === 0 && e.preventDefault()}
+                    onClick={(e) => {
+                      if (!canPlay) {
+                        e.preventDefault();
+                        toast.error(`No lives left! Wait ${formatCooldown(cooldownTimer)} or come back in 1 hour.`);
+                      }
+                    }}
                   >
                     <div className="aspect-square rounded-xl overflow-hidden bg-card mb-4 relative">
                       <img

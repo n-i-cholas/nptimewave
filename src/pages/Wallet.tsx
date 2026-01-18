@@ -78,7 +78,7 @@ const WalletPage = () => {
                 <p className="text-muted-foreground text-sm mb-1">Available Points</p>
                 <p className="font-display text-3xl font-bold text-foreground">{points.toLocaleString()}</p>
               </div>
-              <Link to="/quests" className="np-button-secondary flex items-center gap-2">
+              <Link to="/quests?tab=shop" className="np-button-secondary flex items-center gap-2">
                 <ShoppingBag className="w-4 h-4" />
                 Visit Shop
               </Link>
