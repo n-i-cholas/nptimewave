@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMemories } from '@/hooks/useGameData';
 import { ArrowLeft, Check, Sparkles, AlertCircle, LogIn } from 'lucide-react';
+import ImageUpload from '@/components/ImageUpload';
 
 const memoryThemes = ['Campus Life', 'Friendships', 'Achievements', 'Traditions', 'Learning', 'Events', 'Teachers', 'Other'];
 const memoryRoles = ['Student', 'Alumni', 'Staff', 'Faculty', 'Visitor'];
@@ -73,9 +74,9 @@ const MemorySubmit = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen pt-20 flex items-center justify-center">
+      <div className="min-h-screen pt-20 flex items-center justify-center bg-background">
         <div className="text-center max-w-md mx-auto px-4">
-          <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
             <LogIn className="w-10 h-10 text-primary" />
           </div>
           <h2 className="font-display text-2xl font-bold text-foreground mb-4">
@@ -100,9 +101,9 @@ const MemorySubmit = () => {
 
   if (submitted) {
     return (
-      <div className="min-h-screen pt-20 flex items-center justify-center">
+      <div className="min-h-screen pt-20 flex items-center justify-center bg-background">
         <div className="text-center max-w-md mx-auto px-4 animate-bounce-in">
-          <div className="w-24 h-24 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className="w-24 h-24 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-6">
             <Check className="w-12 h-12 text-success" />
           </div>
           <h2 className="font-display text-3xl font-bold text-foreground mb-4">
@@ -141,7 +142,7 @@ const MemorySubmit = () => {
   }
 
   return (
-    <div className="min-h-screen pt-20 pb-12">
+    <div className="min-h-screen pt-20 pb-12 bg-background">
       <div className="container mx-auto px-4 max-w-2xl">
         {/* Back Button */}
         <div className="py-6 animate-fade-in">
@@ -157,7 +158,7 @@ const MemorySubmit = () => {
         {/* Form */}
         <div className="np-card p-8 animate-fade-in-up" style={{ opacity: 0 }}>
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
+            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-primary" />
             </div>
             <h1 className="font-display text-3xl font-bold text-foreground">
@@ -220,6 +221,21 @@ const MemorySubmit = () => {
                   {formData.story.length} characters
                 </span>
               </div>
+            </div>
+
+            {/* Image Upload */}
+            <div>
+              <label className="block text-foreground font-medium mb-2">
+                Add a Photo <span className="text-muted-foreground text-sm">(optional)</span>
+              </label>
+              <ImageUpload
+                onUploadComplete={(url) => setFormData({ ...formData, image_url: url })}
+                currentImageUrl={formData.image_url}
+                onRemove={() => setFormData({ ...formData, image_url: '' })}
+              />
+              <p className="text-sm text-muted-foreground mt-2">
+                Add a photo to bring your memory to life
+              </p>
             </div>
 
             {/* Decade and Theme Row */}
@@ -292,23 +308,6 @@ const MemorySubmit = () => {
               </div>
             </div>
 
-            {/* Image URL */}
-            <div>
-              <label className="block text-foreground font-medium mb-2">
-                Image URL <span className="text-muted-foreground text-sm">(optional)</span>
-              </label>
-              <input
-                type="url"
-                value={formData.image_url}
-                onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                placeholder="https://example.com/your-image.jpg"
-                className="np-input"
-              />
-              <p className="text-sm text-muted-foreground mt-1">
-                Add a photo to bring your memory to life
-              </p>
-            </div>
-
             {/* Anonymous Toggle */}
             <div className="flex items-center gap-3 p-4 bg-secondary/50 rounded-xl">
               <button
@@ -353,7 +352,7 @@ const MemorySubmit = () => {
             )}
 
             {/* Review Notice */}
-            <div className="bg-primary/10 border border-primary/20 rounded-xl p-4">
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
               <p className="text-sm text-muted-foreground">
                 <strong className="text-foreground">📝 Note:</strong> All submissions are reviewed before publishing
                 to ensure they align with our community guidelines. This usually takes 1-2 business days.

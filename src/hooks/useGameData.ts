@@ -283,7 +283,14 @@ export const useUserProgress = () => {
 
   const resetLives = async () => {
     if (!profile) return;
-    await updateProfile({ lives: profile.max_lives });
+    const { error } = await supabase
+      .from('profiles')
+      .update({ lives: profile.max_lives })
+      .eq('user_id', user?.id);
+    
+    if (!error) {
+      await refreshProfile();
+    }
   };
 
   const updateStreak = async () => {

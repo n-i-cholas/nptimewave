@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMemories, Memory } from '@/hooks/useGameData';
 import { Plus, Calendar, User, Filter, Search, Heart, Star, Sparkles, X } from 'lucide-react';
+import npCampus from '@/assets/np-campus.jpg';
 
 type DecadeFilter = 'all' | '1960s' | '1970s' | '1980s' | '1990s' | '2000s' | '2010s' | '2020s';
 
@@ -70,17 +71,22 @@ const MemoryPortal = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen pt-20 pb-12 flex items-center justify-center">
+      <div className="min-h-screen pt-20 pb-12 flex items-center justify-center bg-background">
         <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen pt-20 pb-12">
+    <div className="min-h-screen pt-20 pb-12 bg-background">
       <div className="container mx-auto px-4">
-        {/* Hero Section */}
-        <div className="py-12 text-center animate-fade-in">
+        {/* Hero Section with Image */}
+        <div className="relative py-12 text-center animate-fade-in rounded-2xl overflow-hidden mb-8">
+          <div className="absolute inset-0 -z-10">
+            <img src={npCampus} alt="NP Campus" className="w-full h-full object-cover opacity-20" />
+            <div className="absolute inset-0 bg-gradient-to-b from-background/50 to-background" />
+          </div>
+          
           <h1 className="font-display text-4xl md:text-5xl font-bold text-foreground mb-4">
             Memory Portal
           </h1>
@@ -98,9 +104,9 @@ const MemoryPortal = () => {
         </div>
 
         {/* Onboarding Banner */}
-        <div className="np-card p-6 mb-8 bg-gradient-to-r from-primary/10 to-cyan-400/10 border-primary/20 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.1s' }}>
+        <div className="np-card p-6 mb-8 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.1s' }}>
           <div className="flex flex-col md:flex-row items-center gap-4 text-center md:text-left">
-            <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
               <Sparkles className="w-8 h-8 text-primary" />
             </div>
             <div className="flex-1">
@@ -419,7 +425,7 @@ const FeaturedMemoryCard = ({ memory, index, isResonated, onResonate, isLoggedIn
   return (
     <Link
       to={`/memory-portal/${memory.id}`}
-      className="np-card group p-6 border-np-gold/30 bg-gradient-to-br from-np-gold/5 to-transparent hover:shadow-lg hover:shadow-np-gold/10 transition-all duration-300"
+      className="np-card group p-6 border-np-gold/20 bg-gradient-to-br from-np-gold/5 to-transparent hover:shadow-lg hover:shadow-np-gold/10 transition-all duration-300"
       style={{ animationDelay: `${index * 100}ms` }}
     >
       <div className="flex items-start gap-2 mb-3">
