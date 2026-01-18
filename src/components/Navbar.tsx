@@ -3,12 +3,13 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAchievements } from '@/hooks/useGameData';
 import { supabase } from '@/integrations/supabase/client';
-import { Heart, Coins, Wallet, Menu, X, Flame, Trophy, Bell, Shield, LogIn } from 'lucide-react';
+import { Heart, Coins, Wallet, Menu, X, Flame, Trophy, Shield, LogIn, LogOut, User } from 'lucide-react';
+import ThemeToggle from './ThemeToggle';
 import npLogo from '@/assets/np-logo.jpg';
 
 const Navbar = () => {
   const location = useLocation();
-  const { user, profile, isAdmin, isModerator } = useAuth();
+  const { user, profile, isAdmin, isModerator, signOut } = useAuth();
   const { newAchievements, clearNewAchievements } = useAchievements();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -79,6 +80,10 @@ const Navbar = () => {
     clearNewAchievements();
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
   const points = profile?.total_points || 0;
   const lives = profile?.lives || 3;
   const maxLives = profile?.max_lives || 3;
@@ -87,13 +92,13 @@ const Navbar = () => {
   return (
     <>
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled ? 'bg-background/95 backdrop-blur-md shadow-lg shadow-black/10' : 'bg-background/80 backdrop-blur-sm'
+        isScrolled ? 'bg-background/95 backdrop-blur-md shadow-lg shadow-black/5' : 'bg-background/80 backdrop-blur-sm'
       } border-b border-border/50`}>
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2 group">
-              <div className="w-8 h-8 rounded-lg overflow-hidden bg-white">
+              <div className="w-8 h-8 rounded-lg overflow-hidden bg-white shadow-sm">
                 <img src={npLogo} alt="NP Logo" className="w-full h-full object-contain" />
               </div>
               <span className="font-display text-xl font-bold text-foreground transition-all duration-300 group-hover:scale-105">
@@ -115,14 +120,17 @@ const Navbar = () => {
             </div>
 
             {/* Right side - Stats & Auth */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              {/* Theme Toggle */}
+              <ThemeToggle />
+
               {user ? (
                 <>
                   {/* Admin Badge with Pending Count */}
                   {(isAdmin || isModerator) && (
                     <Link 
                       to="/admin" 
-                      className="relative hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-primary/20 rounded-full hover:bg-primary/30 transition-colors"
+                      className="relative hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 rounded-full hover:bg-primary/20 transition-colors"
                     >
                       <Shield className="w-4 h-4 text-primary" />
                       <span className="text-primary text-sm font-medium">Admin</span>
@@ -136,7 +144,7 @@ const Navbar = () => {
 
                   {/* Streak Badge */}
                   {streak > 0 && (
-                    <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-full border border-orange-500/30 animate-fade-in">
+                    <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-orange-500/10 to-red-500/10 rounded-full border border-orange-500/20 animate-fade-in">
                       <Flame className="w-4 h-4 text-orange-500" />
                       <span className="font-bold text-orange-500 text-sm">{streak}</span>
                     </div>
@@ -164,9 +172,9 @@ const Navbar = () => {
                           key={i}
                           className={`w-4 h-4 transition-all duration-300 ${
                             i < lives 
-                              ? 'fill-np-red text-np-red animate-pulse' 
+                              ? 'fill-np-red text-np-red' 
                               : 'text-muted-foreground'
-                          }`}
+                          } ${i === lives - 1 && lives <= 1 ? 'animate-pulse' : ''}`}
                         />
                       ))}
                     </div>
@@ -178,6 +186,14 @@ const Navbar = () => {
                     <span className="font-bold text-foreground text-sm">{points.toLocaleString()}</span>
                   </div>
 
+                  {/* Profile */}
+                  <Link
+                    to="/profile"
+                    className="p-2 rounded-full bg-secondary hover:bg-secondary/80 transition-all duration-200 hover:scale-105 active:scale-95"
+                  >
+                    <User className="w-5 h-5 text-foreground" />
+                  </Link>
+
                   {/* Wallet */}
                   <Link
                     to="/wallet"
@@ -185,6 +201,15 @@ const Navbar = () => {
                   >
                     <Wallet className="w-5 h-5 text-foreground" />
                   </Link>
+
+                  {/* Logout */}
+                  <button
+                    onClick={handleSignOut}
+                    className="hidden sm:flex p-2 rounded-full bg-secondary hover:bg-destructive/10 hover:text-destructive transition-all duration-200 hover:scale-105 active:scale-95"
+                    title="Sign Out"
+                  >
+                    <LogOut className="w-5 h-5" />
+                  </button>
                 </>
               ) : (
                 <Link
@@ -213,7 +238,7 @@ const Navbar = () => {
 
         {/* Mobile Navigation */}
         <div className={`md:hidden border-t border-border overflow-hidden transition-all duration-300 ${
-          isMobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+          isMobileMenuOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
         }`}>
           <div className="container mx-auto px-4 py-4 space-y-2">
             {navItems.map((item, index) => (
@@ -222,7 +247,7 @@ const Navbar = () => {
                 to={item.path}
                 className={`block px-4 py-3 rounded-xl transition-all duration-200 ${
                   isActive(item.path)
-                    ? 'bg-primary/20 text-foreground font-semibold'
+                    ? 'bg-primary/10 text-foreground font-semibold'
                     : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                 }`}
                 style={{ animationDelay: `${index * 50}ms` }}
@@ -231,10 +256,20 @@ const Navbar = () => {
               </Link>
             ))}
             
+            {user && (
+              <Link
+                to="/profile"
+                className="flex items-center gap-2 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground"
+              >
+                <User className="w-4 h-4" />
+                Profile
+              </Link>
+            )}
+            
             {(isAdmin || isModerator) && (
               <Link
                 to="/admin"
-                className="flex items-center justify-between px-4 py-3 rounded-xl bg-primary/20 text-primary font-semibold"
+                className="flex items-center justify-between px-4 py-3 rounded-xl bg-primary/10 text-primary font-semibold"
               >
                 <div className="flex items-center gap-2">
                   <Shield className="w-4 h-4" />
@@ -248,7 +283,15 @@ const Navbar = () => {
               </Link>
             )}
             
-            {!user && (
+            {user ? (
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-2 w-full px-4 py-3 rounded-xl text-destructive hover:bg-destructive/10 font-semibold"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </button>
+            ) : (
               <Link
                 to="/auth"
                 className="block px-4 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-center"

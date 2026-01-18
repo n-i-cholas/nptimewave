@@ -1,11 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import FeatureCard from '@/components/FeatureCard';
-import { Flame, Trophy, Target, ChevronRight, Sparkles, LogIn } from 'lucide-react';
+import { Flame, Trophy, Target, Sparkles, LogIn } from 'lucide-react';
 import memoryPortalIcon from '@/assets/memory-portal-icon.jpg';
 import questsIcon from '@/assets/quests-icon.jpg';
 import vrGalleryIcon from '@/assets/vr-gallery-icon.jpg';
-import npBackground from '@/assets/np-background.jpg';
 
 const Index = () => {
   const { user, profile } = useAuth();
@@ -33,25 +32,18 @@ const Index = () => {
   ];
 
   return (
-    <div 
-      className="min-h-screen pt-20 pb-12 overflow-hidden relative"
-      style={{
-        backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.7), rgba(0,0,0,0.85)), url(${npBackground})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
-      }}
-    >
+    <div className="min-h-screen pt-20 pb-12 overflow-hidden relative bg-gradient-to-b from-primary/5 via-background to-background">
       <div className="container mx-auto px-4">
         {/* Hero Section */}
         <section className="py-16 md:py-24 text-center relative">
           {/* Background decoration */}
           <div className="absolute inset-0 -z-10">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
+            <div className="absolute top-1/4 right-1/4 w-[300px] h-[300px] bg-primary/3 rounded-full blur-2xl" />
           </div>
 
           <div className="animate-fade-in-up" style={{ opacity: 0 }}>
-            <h1 className="font-display text-4xl md:text-6xl lg:text-7xl font-bold mb-6">
+            <h1 className="font-display text-4xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight">
               <span className="text-foreground">DISCOVER OUR</span>
               <br />
               <span className="np-gradient-text">DIGITAL HERITAGE</span>
@@ -79,10 +71,6 @@ const Index = () => {
                 Sign In
               </Link>
             )}
-            <Link to="/vr-gallery" className="np-button-secondary inline-flex items-center justify-center gap-2">
-              View Gallery
-              <ChevronRight className="w-4 h-4" />
-            </Link>
           </div>
         </section>
 
@@ -100,7 +88,7 @@ const Index = () => {
               {profile.total_quests_completed > 0 && (
                 <Link 
                   to="/quests"
-                  className="flex items-center gap-2 px-4 py-2 bg-np-gold/20 text-np-gold rounded-full font-medium hover:bg-np-gold/30 transition-colors animate-fade-in"
+                  className="flex items-center gap-2 px-4 py-2 bg-np-gold/10 text-np-gold rounded-full font-medium hover:bg-np-gold/20 transition-colors animate-fade-in border border-np-gold/20"
                 >
                   <Trophy className="w-5 h-5" />
                   <span>{profile.total_quests_completed} Quests Completed</span>
@@ -109,7 +97,7 @@ const Index = () => {
 
               <Link 
                 to="/quests"
-                className="flex items-center gap-2 px-4 py-2 bg-primary/20 text-primary rounded-full font-medium hover:bg-primary/30 transition-colors animate-fade-in"
+                className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-full font-medium hover:bg-primary/20 transition-colors animate-fade-in border border-primary/20"
               >
                 <Target className="w-5 h-5" />
                 <span>Daily Challenges</span>
@@ -137,8 +125,8 @@ const Index = () => {
             className="np-card max-w-3xl mx-auto p-8 relative overflow-hidden animate-fade-in-up" 
             style={{ opacity: 0, animationDelay: '0.6s' }}
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-2xl" />
-            <div className="absolute bottom-0 left-0 w-24 h-24 bg-cyan-400/10 rounded-full blur-2xl" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl" />
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl" />
             
             <div className="relative">
               <h2 className="font-display text-2xl font-bold mb-4 text-foreground">
