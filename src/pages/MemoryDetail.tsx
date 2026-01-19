@@ -1,13 +1,31 @@
 import { useParams, Link } from 'react-router-dom';
-import { useGameStore } from '@/store/gameStore';
+import { useMemories } from '@/hooks/useGameData';
+import { useAuth } from '@/contexts/AuthContext';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, User, Calendar, Heart, Share2, Tag } from 'lucide-react';
 
 const MemoryDetail = () => {
   const { memoryId } = useParams<{ memoryId: string }>();
-  const { memories, resonatedMemories, resonateWithMemory } = useGameStore();
+  const { user } = useAuth();
+  const { memories, loading, resonateWithMemory, getUserResonances } = useMemories();
+  const [resonatedMemories, setResonatedMemories] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (user) {
+      getUserResonances().then(setResonatedMemories);
+    }
+  }, [user]);
 
   const memory = memories.find((m) => m.id === memoryId && m.status === 'approved');
   const isResonated = memory ? resonatedMemories.includes(memory.id) : false;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-20 flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
 
   if (!memory) {
     return (
@@ -25,8 +43,12 @@ const MemoryDetail = () => {
     );
   }
 
-  const handleResonate = () => {
-    resonateWithMemory(memory.id);
+  const handleResonate = async () => {
+    if (!user) return;
+    if (resonatedMemories.includes(memory.id)) return;
+    
+    await resonateWithMemory(memory.id);
+    setResonatedMemories(prev => [...prev, memory.id]);
   };
 
   const handleShare = async () => {
@@ -82,10 +104,10 @@ const MemoryDetail = () => {
           </h1>
 
           {/* Image */}
-          {memory.imageUrl && (
+          {memory.image_url && (
             <div className="aspect-video rounded-xl bg-muted mb-8 overflow-hidden">
               <img
-                src={memory.imageUrl}
+                src={memory.image_url}
                 alt={memory.title}
                 className="w-full h-full object-cover"
               />
@@ -103,13 +125,15 @@ const MemoryDetail = () => {
           <div className="flex items-center gap-3 mb-8">
             <button
               onClick={handleResonate}
+              disabled={!user}
               className={`flex-1 sm:flex-none np-resonance-btn py-3 px-6 rounded-xl ${
                 isResonated ? 'np-resonance-btn-active bg-primary/20' : 'np-resonance-btn-inactive bg-secondary'
-              }`}
+              } ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
+              title={user ? 'Resonate with this memory' : 'Sign in to resonate'}
             >
               <Heart className={`w-5 h-5 ${isResonated ? 'fill-current' : ''}`} />
               <span>{isResonated ? 'Resonated!' : 'This resonates with me'}</span>
-              <span className="font-bold">({memory.resonanceCount})</span>
+              <span className="font-bold">({memory.resonance_count})</span>
             </button>
 
             <button
@@ -129,14 +153,14 @@ const MemoryDetail = () => {
               </div>
               <div>
                 <p className="font-medium text-foreground">
-                  {memory.anonymous ? 'Anonymous' : memory.authorName}
+                  {memory.anonymous ? 'Anonymous' : memory.author_name}
                 </p>
                 <p className="text-sm text-muted-foreground">NP Community Member</p>
               </div>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground text-sm">
               <Calendar className="w-4 h-4" />
-              <span>{new Date(memory.createdAt).toLocaleDateString('en-US', {
+              <span>{new Date(memory.created_at).toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',

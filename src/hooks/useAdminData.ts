@@ -349,3 +349,92 @@ export const useAdminStats = () => {
 
   return { stats, loading, refetch: fetchStats };
 };
+
+export interface UserWithRole {
+  id: string;
+  email: string;
+  display_name: string | null;
+  role: 'admin' | 'moderator' | 'user';
+  created_at: string;
+}
+
+export const useAdminUsers = () => {
+  const [users, setUsers] = useState<UserWithRole[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    
+    // Fetch profiles
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('user_id, display_name, created_at')
+      .order('created_at', { ascending: false });
+
+    if (profilesError) {
+      console.error('Error fetching profiles:', profilesError);
+      setLoading(false);
+      return;
+    }
+
+    // Fetch roles
+    const { data: roles, error: rolesError } = await supabase
+      .from('user_roles')
+      .select('user_id, role');
+
+    if (rolesError) {
+      console.error('Error fetching roles:', rolesError);
+      setLoading(false);
+      return;
+    }
+
+    // Map profiles with their roles
+    const usersWithRoles = profiles.map(profile => {
+      const userRole = roles.find(r => r.user_id === profile.user_id);
+      return {
+        id: profile.user_id,
+        email: '', // We don't have access to auth.users email from client
+        display_name: profile.display_name,
+        role: (userRole?.role || 'user') as 'admin' | 'moderator' | 'user',
+        created_at: profile.created_at,
+      };
+    });
+
+    setUsers(usersWithRoles);
+    setLoading(false);
+  }, []);
+
+  const updateUserRole = async (userId: string, newRole: 'admin' | 'moderator' | 'user') => {
+    // Check if user already has a role entry
+    const { data: existingRole } = await supabase
+      .from('user_roles')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+
+    let error;
+    if (existingRole) {
+      // Update existing role
+      const result = await supabase
+        .from('user_roles')
+        .update({ role: newRole })
+        .eq('user_id', userId);
+      error = result.error;
+    } else {
+      // Insert new role
+      const result = await supabase
+        .from('user_roles')
+        .insert({ user_id: userId, role: newRole });
+      error = result.error;
+    }
+
+    if (error) {
+      console.error('Error updating user role:', error);
+    } else {
+      await fetchUsers();
+    }
+    return { error };
+  };
+
+  return { users, loading, updateUserRole, refetch: fetchUsers };
+};

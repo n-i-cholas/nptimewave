@@ -13,13 +13,14 @@ import {
   Check,
   X,
   RefreshCw,
-  Lock
+  Lock,
+  Users
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAdminMemories, useAdminQuests, useAdminShop, useAdminStats } from '@/hooks/useAdminData';
+import { useAdminMemories, useAdminQuests, useAdminShop, useAdminStats, useAdminUsers } from '@/hooks/useAdminData';
 import { soundManager } from '@/lib/sounds';
 
-type AdminTab = 'memories' | 'quests' | 'shop' | 'settings' | 'stats';
+type AdminTab = 'memories' | 'quests' | 'shop' | 'settings' | 'stats' | 'users';
 
 const ADMIN_PASSWORD = 'admin123';
 
@@ -126,6 +127,7 @@ const AdminPortal = () => {
     { key: 'memories', label: 'Memories', icon: BookOpen },
     { key: 'quests', label: 'Quests', icon: HelpCircle },
     { key: 'shop', label: 'Shop', icon: ShoppingBag },
+    { key: 'users', label: 'Users', icon: Users },
     { key: 'stats', label: 'Stats', icon: BarChart3 },
     { key: 'settings', label: 'Settings', icon: Settings },
   ] as const;
@@ -195,6 +197,7 @@ const AdminPortal = () => {
           {currentTab === 'memories' && <MemoriesAdmin onSave={showSaveSuccess} />}
           {currentTab === 'quests' && <QuestsAdmin onSave={showSaveSuccess} />}
           {currentTab === 'shop' && <ShopAdmin onSave={showSaveSuccess} />}
+          {currentTab === 'users' && <UsersAdmin onSave={showSaveSuccess} />}
           {currentTab === 'stats' && <StatsAdmin />}
           {currentTab === 'settings' && <SettingsAdmin onSave={showSaveSuccess} />}
         </div>
@@ -961,6 +964,125 @@ const StatsAdmin = () => {
           <p className="text-3xl font-bold text-np-gold">{stats.totalQuests}</p>
           <p className="text-muted-foreground">Total Quests</p>
         </div>
+      </div>
+    </div>
+  );
+};
+
+// Users Admin Section
+const UsersAdmin = ({ onSave }: { onSave: (msg: string) => void }) => {
+  const { users, loading, updateUserRole, refetch } = useAdminUsers();
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  const handleRoleChange = async (userId: string, newRole: 'admin' | 'moderator' | 'user') => {
+    await updateUserRole(userId, newRole);
+    setEditingUserId(null);
+    onSave(`User role updated to ${newRole}`);
+  };
+
+  if (loading) {
+    return <div className="text-center py-12"><RefreshCw className="w-8 h-8 animate-spin mx-auto text-muted-foreground" /></div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-display text-xl font-bold text-foreground">Manage Users</h2>
+        <span className="text-sm text-muted-foreground">
+          Total: {users.length}
+        </span>
+      </div>
+
+      <div className="space-y-3">
+        {users.map((user) => (
+          <div key={user.id} className="np-card p-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                <Users className="w-6 h-6 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-foreground">{user.display_name || 'Unnamed User'}</h3>
+                <p className="text-muted-foreground text-sm">ID: {user.id.slice(0, 8)}...</p>
+                <p className="text-xs text-muted-foreground">
+                  Joined: {new Date(user.created_at).toLocaleDateString()}
+                </p>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                {editingUserId === user.id ? (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleRoleChange(user.id, 'user')}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        user.role === 'user' 
+                          ? 'bg-secondary text-foreground' 
+                          : 'bg-secondary/50 text-muted-foreground hover:bg-secondary'
+                      }`}
+                    >
+                      User
+                    </button>
+                    <button
+                      onClick={() => handleRoleChange(user.id, 'moderator')}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        user.role === 'moderator' 
+                          ? 'bg-warning/20 text-warning' 
+                          : 'bg-secondary/50 text-muted-foreground hover:bg-warning/20 hover:text-warning'
+                      }`}
+                    >
+                      Moderator
+                    </button>
+                    <button
+                      onClick={() => handleRoleChange(user.id, 'admin')}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        user.role === 'admin' 
+                          ? 'bg-primary/20 text-primary' 
+                          : 'bg-secondary/50 text-muted-foreground hover:bg-primary/20 hover:text-primary'
+                      }`}
+                    >
+                      Admin
+                    </button>
+                    <button
+                      onClick={() => setEditingUserId(null)}
+                      className="p-1.5 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <span className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                      user.role === 'admin' 
+                        ? 'bg-primary/20 text-primary' 
+                        : user.role === 'moderator'
+                        ? 'bg-warning/20 text-warning'
+                        : 'bg-secondary text-muted-foreground'
+                    }`}>
+                      {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                    </span>
+                    <button
+                      onClick={() => setEditingUserId(user.id)}
+                      className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                      title="Edit Role"
+                    >
+                      ✏️
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {users.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground">
+            <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+            <p>No users found</p>
+          </div>
+        )}
       </div>
     </div>
   );
