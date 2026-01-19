@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWallet } from '@/hooks/useGameData';
 import { ArrowLeft, Check, Wallet, Gift, ShoppingBag, LogIn } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import RedeemModal from '@/components/RedeemModal';
 
 const WalletPage = () => {
   const { user, profile } = useAuth();
   const { items, loading, useItem } = useWallet();
   const navigate = useNavigate();
+  const [selectedItem, setSelectedItem] = useState<typeof items[0] | null>(null);
 
   const unusedItems = items.filter((item) => !item.used);
   const usedItems = items.filter((item) => item.used);
@@ -130,15 +133,25 @@ const WalletPage = () => {
                     </p>
                   </div>
                   <button
-                    onClick={() => handleUseVoucher(item.id)}
-                    className="px-5 py-2.5 rounded-xl bg-success text-white font-semibold hover:scale-105 transition-all duration-200 active:scale-95 shadow-lg shadow-success/20"
+                    onClick={() => setSelectedItem(item)}
+                    className="px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold hover:scale-105 transition-all duration-200 active:scale-95 shadow-lg shadow-primary/20"
                   >
-                    Mark as Used
+                    Redeem Now
                   </button>
                 </div>
               ))}
             </div>
           </section>
+        )}
+
+        {/* Redeem Modal */}
+        {selectedItem && (
+          <RedeemModal
+            isOpen={!!selectedItem}
+            onClose={() => setSelectedItem(null)}
+            item={selectedItem}
+            onMarkAsUsed={handleUseVoucher}
+          />
         )}
 
         {/* Used Vouchers */}

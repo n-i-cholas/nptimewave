@@ -1,19 +1,13 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { Memory, Quest, Question, ShopItem } from './useGameData';
 
 export const useAdminMemories = () => {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [loading, setLoading] = useState(true);
-  const { isAdmin, isModerator } = useAuth();
 
   const fetchMemories = useCallback(async () => {
-    if (!isAdmin && !isModerator) {
-      setLoading(false);
-      return;
-    }
-
+    setLoading(true);
     const { data, error } = await supabase
       .from('memories')
       .select('*')
@@ -25,7 +19,7 @@ export const useAdminMemories = () => {
       setMemories(data as Memory[]);
     }
     setLoading(false);
-  }, [isAdmin, isModerator]);
+  }, []);
 
   const updateMemoryStatus = async (id: string, status: 'pending' | 'approved' | 'rejected') => {
     const { error } = await supabase
