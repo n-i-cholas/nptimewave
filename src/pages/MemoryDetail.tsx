@@ -2,7 +2,8 @@ import { useParams, Link } from 'react-router-dom';
 import { useMemories } from '@/hooks/useGameData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
-import { ArrowLeft, User, Calendar, Heart, Share2, Tag } from 'lucide-react';
+import { ArrowLeft, User, Calendar, Heart, Tag } from 'lucide-react';
+import SocialShare from '@/components/SocialShare';
 
 const MemoryDetail = () => {
   const { memoryId } = useParams<{ memoryId: string }>();
@@ -49,20 +50,6 @@ const MemoryDetail = () => {
     
     await resonateWithMemory(memory.id);
     setResonatedMemories(prev => [...prev, memory.id]);
-  };
-
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: memory.title,
-          text: memory.story.slice(0, 100) + '...',
-          url: window.location.href,
-        });
-      } catch (err) {
-        // User cancelled or error
-      }
-    }
   };
 
   return (
@@ -136,19 +123,17 @@ const MemoryDetail = () => {
               <span className="font-bold">({memory.resonance_count})</span>
             </button>
 
-            <button
-              onClick={handleShare}
-              className="p-3 bg-secondary rounded-xl text-foreground hover:bg-secondary/80 transition-colors"
-              title="Share this memory"
-            >
-              <Share2 className="w-5 h-5" />
-            </button>
+            <SocialShare
+              title={memory.title}
+              text={memory.story.slice(0, 100) + '...'}
+              url={window.location.href}
+            />
           </div>
 
           {/* Author Info */}
           <div className="flex items-center justify-between pt-6 border-t border-border">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/30 to-cyan-400/30 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center">
                 <User className="w-6 h-6 text-primary" />
               </div>
               <div>
@@ -171,7 +156,7 @@ const MemoryDetail = () => {
 
         {/* Share CTA */}
         <div className="mt-8 text-center animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.2s' }}>
-          <div className="np-card p-6 bg-gradient-to-r from-primary/10 to-cyan-400/10 border-primary/20">
+          <div className="np-card p-6 bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
             <p className="text-muted-foreground mb-4">
               Inspired by this story? Share your own NP memory!
             </p>
