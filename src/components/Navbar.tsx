@@ -92,8 +92,8 @@ const Navbar = () => {
     await signOut();
   };
   const points = profile?.total_points || 0;
-  const lives = profile?.lives || 3;
-  const maxLives = profile?.max_lives || 3;
+  const lives = profile?.lives || 5;
+  const maxLives = profile?.max_lives || 5;
   const streak = profile?.streak || 0;
   return <>
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-background/95 backdrop-blur-md shadow-lg shadow-black/5' : 'bg-background/80 backdrop-blur-sm'} border-b border-border/50`}>

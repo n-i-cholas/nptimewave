@@ -24,7 +24,7 @@ Your role is to help users navigate and understand the platform. Here's what you
 
 Platform Features:
 - Memory Portal: Share and explore personal stories from NP students, alumni, and staff across decades. Submit memories with photos and decade info.
-- Quests: Interactive quiz games about NP's history, campus, and lecturers. 3 lives per day, earn points for correct answers. Completed quests can be replayed in Practice Mode for fun!
+- Quests: Interactive quiz games about NP's history, campus, and lecturers. 5 lives per day, earn points for correct answers. Completed quests can be replayed in Practice Mode for fun!
 - VR Gallery: Immersive virtual reality experience showcasing NP's heritage.
 - Wallet & Shop: Earn points from quests to redeem vouchers and items. Check your wallet for purchased items.
 - Achievements: Badge system for completing quests, maintaining streaks, and earning points.
