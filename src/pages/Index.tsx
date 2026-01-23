@@ -5,6 +5,8 @@ import npBackground from '@/assets/np-background.jpg';
 import npCampus from '@/assets/np-campus.jpg';
 import npHistory from '@/assets/np-history.jpg';
 import npVision from '@/assets/np-vision.jpg';
+import npLogo from '@/assets/np-logo.jpg';
+
 const Index = () => {
   const {
     user,
@@ -168,8 +170,8 @@ const Index = () => {
               <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl" />
               
               <div className="relative">
-                <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <Sparkles className="w-8 h-8 text-primary" />
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 overflow-hidden">
+                  <img src={npLogo} alt="NP Logo" className="w-full h-full object-cover" />
                 </div>
                 
                 <h2 className="font-display text-3xl font-bold mb-4 text-foreground">About NP Timewave</h2>

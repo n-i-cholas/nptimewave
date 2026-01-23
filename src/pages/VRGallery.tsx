@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { ExternalLink, Compass } from 'lucide-react';
 
 const VRGallery = () => {
-  const externalUrl = 'https://proid-timewave.vercel.app/';
+  const externalUrl = 'https://nptimewave2.vercel.app/';
 
   useEffect(() => {
     // Auto-redirect after a brief moment
