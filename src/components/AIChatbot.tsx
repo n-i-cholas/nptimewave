@@ -1,35 +1,93 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Bot, User, Loader2, Trash2, Sparkles } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { MessageCircle, X, Send, Bot, User, Loader2, Trash2, Sparkles, Lightbulb } from 'lucide-react';
+import { getRandomFunFact } from '@/lib/npFunFacts';
 
 type Message = {
   role: 'user' | 'assistant';
   content: string;
+  isFunFact?: boolean;
 };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
-const QUICK_REPLIES = [
-  { label: '🎮 How do quests work?', message: 'How do the quests work?' },
-  { label: '📝 Share a memory', message: 'How do I share a memory?' },
-  { label: '🎁 Earn rewards', message: 'How can I earn points and rewards?' },
-  { label: '🏛️ VR Gallery', message: 'What is the VR Gallery?' },
-];
+type QuickReply = {
+  label: string;
+  message: string;
+  isFunFact?: boolean;
+};
+
+// Page-aware quick replies based on current route
+const getQuickReplies = (pathname: string): QuickReply[] => {
+  const baseReplies: QuickReply[] = [
+    { label: '💡 Fun Fact', message: '__FUN_FACT__', isFunFact: true },
+  ];
+
+  if (pathname === '/' || pathname === '') {
+    return [
+      ...baseReplies,
+      { label: '🚀 Get Started', message: 'How do I get started with NP Timewave?' },
+      { label: '📝 Share Memory', message: 'How do I share a memory?' },
+      { label: '🎮 Play Quests', message: 'Tell me about the quests!' },
+    ];
+  }
+
+  if (pathname.startsWith('/memory-portal')) {
+    return [
+      ...baseReplies,
+      { label: '📝 Submit Tips', message: 'What makes a great memory submission?' },
+      { label: '❤️ Resonating', message: 'What does resonating with a memory mean?' },
+      { label: '🔍 Finding Stories', message: 'How do I find memories from a specific decade?' },
+    ];
+  }
+
+  if (pathname.startsWith('/quests')) {
+    return [
+      ...baseReplies,
+      { label: '❤️ Lives System', message: 'How does the lives system work?' },
+      { label: '🏆 Earn Points', message: 'How can I earn more points?' },
+      { label: '🔄 Practice Mode', message: 'Can I replay completed quests?' },
+    ];
+  }
+
+  if (pathname.startsWith('/wallet')) {
+    return [
+      ...baseReplies,
+      { label: '🛒 Redeeming', message: 'How do I redeem items from the shop?' },
+      { label: '🎁 Using Items', message: 'How do I use items in my wallet?' },
+      { label: '💰 Earning Points', message: 'What are the best ways to earn points?' },
+    ];
+  }
+
+  if (pathname.startsWith('/vr-gallery')) {
+    return [
+      ...baseReplies,
+      { label: '🏛️ VR Features', message: 'What can I see in the VR Gallery?' },
+      { label: '📱 Requirements', message: 'What do I need to use the VR Gallery?' },
+    ];
+  }
+
+  // Default replies
+  return [
+    ...baseReplies,
+    { label: '🎮 Quests', message: 'How do the quests work?' },
+    { label: '📝 Memories', message: 'How do I share a memory?' },
+    { label: '🎁 Rewards', message: 'How can I earn points and rewards?' },
+  ];
+};
 
 // Simple markdown parser for bold and bullet points
 const parseMarkdown = (text: string) => {
   const parts: (string | JSX.Element)[] = [];
   let key = 0;
   
-  // Split by lines first to handle bullet points
   const lines = text.split('\n');
   
   lines.forEach((line, lineIdx) => {
-    // Handle bullet points
     const bulletMatch = line.match(/^\s*[\*\-]\s+(.*)$/);
     const isBullet = bulletMatch !== null;
     const lineContent = isBullet ? bulletMatch[1] : line;
     
-    // Parse bold text within the line
     const boldRegex = /\*\*([^*]+)\*\*/g;
     let lastIndex = 0;
     let match;
@@ -68,6 +126,7 @@ const parseMarkdown = (text: string) => {
 };
 
 const AIChatbot = () => {
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { role: 'assistant', content: 'Hi! 👋 I\'m your NP Timewave guide. How can I help you explore our platform today?' }
@@ -75,7 +134,10 @@ const AIChatbot = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(true);
+  const [shownFunFacts, setShownFunFacts] = useState<number[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const quickReplies = getQuickReplies(location.pathname);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -92,7 +154,7 @@ const AIChatbot = () => {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
       },
-      body: JSON.stringify({ messages: userMessages }),
+      body: JSON.stringify({ messages: userMessages.map(m => ({ role: m.role, content: m.content })) }),
     });
 
     if (!resp.ok) {
@@ -146,8 +208,28 @@ const AIChatbot = () => {
     }
   };
 
+  const showFunFact = () => {
+    const { fact, index } = getRandomFunFact(shownFunFacts);
+    setShownFunFacts(prev => [...prev, index]);
+    
+    const funFactMessage: Message = {
+      role: 'assistant',
+      content: `💡 **Did you know?**\n\n${fact.fact}`,
+      isFunFact: true,
+    };
+    
+    setMessages(prev => [...prev, funFactMessage]);
+    setShowQuickReplies(true);
+  };
+
   const sendMessage = async (messageText: string) => {
     if (!messageText.trim() || isLoading) return;
+
+    // Handle fun fact request
+    if (messageText === '__FUN_FACT__') {
+      showFunFact();
+      return;
+    }
 
     setShowQuickReplies(false);
     const userMessage: Message = { role: 'user', content: messageText.trim() };
@@ -166,6 +248,7 @@ const AIChatbot = () => {
       }]);
     } finally {
       setIsLoading(false);
+      setShowQuickReplies(true);
     }
   };
 
@@ -183,6 +266,7 @@ const AIChatbot = () => {
       { role: 'assistant', content: 'Hi! 👋 I\'m your NP Timewave guide. How can I help you explore our platform today?' }
     ]);
     setShowQuickReplies(true);
+    setShownFunFacts([]);
   };
 
   return (
@@ -239,12 +323,14 @@ const AIChatbot = () => {
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                   msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'
                 }`}>
-                  {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                  {msg.role === 'user' ? <User className="w-4 h-4" /> : msg.isFunFact ? <Lightbulb className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                 </div>
                 <div className={`max-w-[80%] p-3 rounded-2xl text-sm leading-relaxed ${
                   msg.role === 'user' 
                     ? 'bg-primary text-primary-foreground rounded-tr-sm' 
-                    : 'bg-secondary text-secondary-foreground rounded-tl-sm'
+                    : msg.isFunFact
+                      ? 'bg-gradient-to-br from-primary/20 to-accent/20 text-foreground rounded-tl-sm border border-primary/20'
+                      : 'bg-secondary text-secondary-foreground rounded-tl-sm'
                 }`}>
                   {msg.role === 'assistant' ? parseMarkdown(msg.content) : msg.content}
                 </div>
@@ -266,15 +352,19 @@ const AIChatbot = () => {
             )}
             
             {/* Quick Replies */}
-            {showQuickReplies && messages.length === 1 && !isLoading && (
+            {showQuickReplies && !isLoading && (
               <div className="space-y-2 pt-2">
-                <p className="text-xs text-muted-foreground text-center">Quick questions:</p>
+                <p className="text-xs text-muted-foreground text-center">Suggestions:</p>
                 <div className="flex flex-wrap gap-2 justify-center">
-                  {QUICK_REPLIES.map((reply, idx) => (
+                  {quickReplies.map((reply, idx) => (
                     <button
                       key={idx}
                       onClick={() => handleQuickReply(reply.message)}
-                      className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs rounded-full transition-colors border border-primary/20"
+                      className={`px-3 py-1.5 text-xs rounded-full transition-colors border ${
+                        reply.isFunFact 
+                          ? 'bg-gradient-to-r from-primary/20 to-accent/20 hover:from-primary/30 hover:to-accent/30 text-primary border-primary/30'
+                          : 'bg-primary/10 hover:bg-primary/20 text-primary border-primary/20'
+                      }`}
                     >
                       {reply.label}
                     </button>

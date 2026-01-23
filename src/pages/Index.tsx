@@ -6,6 +6,8 @@ import npCampus from '@/assets/np-campus.jpg';
 import npHistory from '@/assets/np-history.jpg';
 import npVision from '@/assets/np-vision.jpg';
 import npLogo from '@/assets/np-logo.jpg';
+import Leaderboard from '@/components/Leaderboard';
+import OnboardingTour from '@/components/OnboardingTour';
 
 const Index = () => {
   const {
@@ -158,6 +160,15 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Leaderboard Section */}
+      <section className="py-16 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="max-w-2xl mx-auto">
+            <Leaderboard />
+          </div>
+        </div>
+      </section>
+
       {/* About Section */}
       <section className="py-20 bg-gradient-to-b from-background to-primary/5">
         <div className="container mx-auto px-4">
@@ -181,6 +192,9 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Onboarding Tour */}
+      <OnboardingTour />
     </div>;
 };
 export default Index;
