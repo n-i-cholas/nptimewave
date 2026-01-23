@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Navbar from "./components/Navbar";
+import AIChatbot from "./components/AIChatbot";
 import Index from "./pages/Index";
 import MemoryPortal from "./pages/MemoryPortal";
 import MemoryDetail from "./pages/MemoryDetail";
@@ -45,6 +46,7 @@ const App = () => (
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <AIChatbot />
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>

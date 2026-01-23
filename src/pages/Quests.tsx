@@ -310,11 +310,14 @@ const QuestsPage = () => {
                 return (
                   <Link
                     key={quest.id}
-                    to={canPlay ? `/quests/${quest.id}` : '#'}
-                    className={`np-quest-card group animate-fade-in-up ${!canPlay ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    to={canPlay && !isCompleted ? `/quests/${quest.id}` : '#'}
+                    className={`np-quest-card group animate-fade-in-up ${!canPlay || isCompleted ? 'cursor-not-allowed' : ''} ${isCompleted ? 'opacity-75' : ''} ${!canPlay && !isCompleted ? 'opacity-50' : ''}`}
                     style={{ animationDelay: `${index * 100}ms`, animationFillMode: 'forwards' }}
                     onClick={(e) => {
-                      if (!canPlay) {
+                      if (isCompleted) {
+                        e.preventDefault();
+                        toast.info('You have already completed this quest!');
+                      } else if (!canPlay) {
                         e.preventDefault();
                         toast.error(`No lives left! Wait ${formatCooldown(cooldownTimer)} or come back in 1 hour.`);
                       }
