@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Bot, User, Loader2 } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, User, Loader2, Trash2, Sparkles } from 'lucide-react';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -8,13 +8,73 @@ type Message = {
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
+const QUICK_REPLIES = [
+  { label: '🎮 How do quests work?', message: 'How do the quests work?' },
+  { label: '📝 Share a memory', message: 'How do I share a memory?' },
+  { label: '🎁 Earn rewards', message: 'How can I earn points and rewards?' },
+  { label: '🏛️ VR Gallery', message: 'What is the VR Gallery?' },
+];
+
+// Simple markdown parser for bold and bullet points
+const parseMarkdown = (text: string) => {
+  const parts: (string | JSX.Element)[] = [];
+  let key = 0;
+  
+  // Split by lines first to handle bullet points
+  const lines = text.split('\n');
+  
+  lines.forEach((line, lineIdx) => {
+    // Handle bullet points
+    const bulletMatch = line.match(/^\s*[\*\-]\s+(.*)$/);
+    const isBullet = bulletMatch !== null;
+    const lineContent = isBullet ? bulletMatch[1] : line;
+    
+    // Parse bold text within the line
+    const boldRegex = /\*\*([^*]+)\*\*/g;
+    let lastIndex = 0;
+    let match;
+    const lineParts: (string | JSX.Element)[] = [];
+    
+    while ((match = boldRegex.exec(lineContent)) !== null) {
+      if (match.index > lastIndex) {
+        lineParts.push(lineContent.slice(lastIndex, match.index));
+      }
+      lineParts.push(<strong key={key++} className="font-semibold">{match[1]}</strong>);
+      lastIndex = match.index + match[0].length;
+    }
+    
+    if (lastIndex < lineContent.length) {
+      lineParts.push(lineContent.slice(lastIndex));
+    }
+    
+    if (lineParts.length === 0) {
+      lineParts.push(lineContent);
+    }
+    
+    if (isBullet) {
+      parts.push(
+        <div key={key++} className="flex gap-2 ml-2">
+          <span className="text-primary">•</span>
+          <span>{lineParts}</span>
+        </div>
+      );
+    } else {
+      if (lineIdx > 0) parts.push(<br key={key++} />);
+      parts.push(<span key={key++}>{lineParts}</span>);
+    }
+  });
+  
+  return parts;
+};
+
 const AIChatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: 'Hi! I\'m your NP Timewave guide. How can I help you explore our platform today?' }
+    { role: 'assistant', content: 'Hi! 👋 I\'m your NP Timewave guide. How can I help you explore our platform today?' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showQuickReplies, setShowQuickReplies] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -86,11 +146,11 @@ const AIChatbot = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
+  const sendMessage = async (messageText: string) => {
+    if (!messageText.trim() || isLoading) return;
 
-    const userMessage: Message = { role: 'user', content: input.trim() };
+    setShowQuickReplies(false);
+    const userMessage: Message = { role: 'user', content: messageText.trim() };
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setInput('');
@@ -109,29 +169,64 @@ const AIChatbot = () => {
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await sendMessage(input);
+  };
+
+  const handleQuickReply = (message: string) => {
+    sendMessage(message);
+  };
+
+  const clearChat = () => {
+    setMessages([
+      { role: 'assistant', content: 'Hi! 👋 I\'m your NP Timewave guide. How can I help you explore our platform today?' }
+    ]);
+    setShowQuickReplies(true);
+  };
+
   return (
     <>
       {/* Chat Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-primary text-primary-foreground rounded-full shadow-lg hover:scale-110 transition-transform flex items-center justify-center"
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-primary text-primary-foreground rounded-full shadow-lg hover:scale-110 transition-transform flex items-center justify-center group"
         aria-label="Toggle chat"
       >
-        {isOpen ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
+        {isOpen ? (
+          <X className="w-6 h-6" />
+        ) : (
+          <>
+            <MessageCircle className="w-6 h-6" />
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full animate-pulse" />
+          </>
+        )}
       </button>
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 z-50 w-[350px] h-[500px] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-fade-in">
+        <div className="fixed bottom-24 right-6 z-50 w-[380px] max-w-[calc(100vw-3rem)] h-[550px] max-h-[calc(100vh-8rem)] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-fade-in">
           {/* Header */}
-          <div className="bg-primary text-primary-foreground p-4 flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary-foreground/20 rounded-full flex items-center justify-center">
-              <Bot className="w-5 h-5" />
+          <div className="bg-primary text-primary-foreground p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary-foreground/20 rounded-full flex items-center justify-center">
+                <Bot className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold flex items-center gap-2">
+                  NP Timewave Guide
+                  <Sparkles className="w-4 h-4 text-primary-foreground/70" />
+                </h3>
+                <p className="text-xs opacity-80">Powered by AI</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-bold">NP Timewave Guide</h3>
-              <p className="text-xs opacity-80">Ask me anything about the platform!</p>
-            </div>
+            <button
+              onClick={clearChat}
+              className="p-2 hover:bg-primary-foreground/10 rounded-lg transition-colors"
+              title="Clear chat"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
           </div>
 
           {/* Messages */}
@@ -146,37 +241,60 @@ const AIChatbot = () => {
                 }`}>
                   {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                 </div>
-                <div className={`max-w-[75%] p-3 rounded-2xl text-sm ${
+                <div className={`max-w-[80%] p-3 rounded-2xl text-sm leading-relaxed ${
                   msg.role === 'user' 
                     ? 'bg-primary text-primary-foreground rounded-tr-sm' 
                     : 'bg-secondary text-secondary-foreground rounded-tl-sm'
                 }`}>
-                  {msg.content}
+                  {msg.role === 'assistant' ? parseMarkdown(msg.content) : msg.content}
                 </div>
               </div>
             ))}
+            
+            {/* Loading indicator */}
             {isLoading && messages[messages.length - 1]?.role === 'user' && (
               <div className="flex gap-2">
                 <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
                   <Bot className="w-4 h-4 text-secondary-foreground" />
                 </div>
-                <div className="bg-secondary p-3 rounded-2xl rounded-tl-sm">
-                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                <div className="bg-secondary p-3 rounded-2xl rounded-tl-sm flex items-center gap-1">
+                  <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
               </div>
             )}
+            
+            {/* Quick Replies */}
+            {showQuickReplies && messages.length === 1 && !isLoading && (
+              <div className="space-y-2 pt-2">
+                <p className="text-xs text-muted-foreground text-center">Quick questions:</p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {QUICK_REPLIES.map((reply, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleQuickReply(reply.message)}
+                      className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs rounded-full transition-colors border border-primary/20"
+                    >
+                      {reply.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            
             <div ref={messagesEndRef} />
           </div>
 
           {/* Input */}
-          <form onSubmit={handleSubmit} className="p-4 border-t border-border">
+          <form onSubmit={handleSubmit} className="p-4 border-t border-border bg-card">
             <div className="flex gap-2">
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Type your question..."
-                className="flex-1 px-4 py-2 bg-secondary text-foreground rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                className="flex-1 px-4 py-2.5 bg-secondary text-foreground rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-muted-foreground"
                 disabled={isLoading}
               />
               <button
@@ -184,7 +302,7 @@ const AIChatbot = () => {
                 disabled={!input.trim() || isLoading}
                 className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Send className="w-4 h-4" />
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </button>
             </div>
           </form>

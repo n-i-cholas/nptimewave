@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuests, useUserProgress, useAchievements } from '@/hooks/useGameData';
-import { Heart, Lightbulb, CheckCircle2, XCircle, ArrowRight, Trophy, Sparkles, LogIn } from 'lucide-react';
+import { Heart, Lightbulb, CheckCircle2, XCircle, ArrowRight, Trophy, Sparkles, LogIn, RotateCcw } from 'lucide-react';
 import { soundManager } from '@/lib/sounds';
 import { celebrateQuestComplete } from '@/lib/confetti';
 
 const QuestPlay = () => {
   const { questId } = useParams<{ questId: string }>();
+  const [searchParams] = useSearchParams();
+  const isPracticeMode = searchParams.get('mode') === 'practice';
   const navigate = useNavigate();
   const { user, profile, refreshProfile } = useAuth();
   const { quests, loading: questsLoading } = useQuests();
@@ -35,11 +37,12 @@ const QuestPlay = () => {
     }
   }, [user]);
 
+  // In practice mode, don't check lives
   useEffect(() => {
-    if (lives === 0 && !questsLoading && user) {
+    if (lives === 0 && !questsLoading && user && !isPracticeMode) {
       setGameOver(true);
     }
-  }, [lives, questsLoading, user]);
+  }, [lives, questsLoading, user, isPracticeMode]);
 
   // Show login prompt if not authenticated
   if (!user) {
@@ -98,14 +101,16 @@ const QuestPlay = () => {
 
     if (correct) {
       soundManager.playCorrect();
-      await recordCorrectAnswer();
+      if (!isPracticeMode) {
+        await recordCorrectAnswer();
+      }
       const basePoints = currentQuestion.points || 100;
       const newStreak = correctStreak + 1;
       setCorrectStreak(newStreak);
       
-      // Streak bonus
+      // Streak bonus (only in normal mode)
       let bonus = 0;
-      if (newStreak >= 3) {
+      if (newStreak >= 3 && !isPracticeMode) {
         bonus = 50;
         setShowStreakBonus(true);
         setTimeout(() => setShowStreakBonus(false), 1500);
@@ -115,12 +120,14 @@ const QuestPlay = () => {
     } else {
       soundManager.playWrong();
       setCorrectStreak(0);
-      await loseLife();
-      await refreshProfile();
-      
-      // Check if out of lives
-      if ((profile?.lives || 1) - 1 === 0) {
-        setGameOver(true);
+      if (!isPracticeMode) {
+        await loseLife();
+        await refreshProfile();
+        
+        // Check if out of lives
+        if ((profile?.lives || 1) - 1 === 0) {
+          setGameOver(true);
+        }
       }
     }
 
@@ -134,22 +141,24 @@ const QuestPlay = () => {
 
   const handleNext = async () => {
     if (isLastQuestion) {
-      await addPoints(score);
-      if (!isQuestCompleted) {
-        await completeQuest(quest.id);
-        soundManager.playQuestComplete();
-        celebrateQuestComplete();
-        
-        // Check for achievements
-        const updatedCompleted = await getCompletedQuests();
-        if (updatedCompleted.length >= 1) {
-          await unlockAchievement('history-explorer');
+      if (!isPracticeMode) {
+        await addPoints(score);
+        if (!isQuestCompleted) {
+          await completeQuest(quest.id);
+          soundManager.playQuestComplete();
+          celebrateQuestComplete();
+          
+          // Check for achievements
+          const updatedCompleted = await getCompletedQuests();
+          if (updatedCompleted.length >= 1) {
+            await unlockAchievement('history-explorer');
+          }
+          if (updatedCompleted.length >= 3) {
+            await unlockAchievement('campus-expert');
+          }
         }
-        if (updatedCompleted.length >= 3) {
-          await unlockAchievement('campus-expert');
-        }
+        await refreshProfile();
       }
-      await refreshProfile();
       setTimeout(() => navigate('/quests'), 1500);
     } else {
       setCurrentQuestionIndex((prev) => prev + 1);
@@ -161,7 +170,7 @@ const QuestPlay = () => {
   };
 
   const handleExit = async () => {
-    if (score > 0) {
+    if (score > 0 && !isPracticeMode) {
       await addPoints(score);
       await refreshProfile();
     }
@@ -182,23 +191,33 @@ const QuestPlay = () => {
             </button>
             
             <div className="flex items-center gap-3">
+              {isPracticeMode && (
+                <div className="flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
+                  <RotateCcw className="w-4 h-4" />
+                  Practice
+                </div>
+              )}
               <span className="text-2xl">{quest.icon}</span>
               <h2 className="font-display text-lg font-bold text-foreground hidden sm:block">
                 {quest.category}
               </h2>
             </div>
             
-            {/* Lives */}
-            <div className="flex items-center gap-1">
-              {Array.from({ length: profile?.max_lives || 3 }).map((_, i) => (
-                <Heart
-                  key={i}
-                  className={`w-6 h-6 transition-all duration-300 ${
-                    i < lives ? 'fill-destructive text-destructive' : 'text-muted-foreground'
-                  } ${i === lives - 1 && lives <= 1 ? 'animate-pulse' : ''}`}
-                />
-              ))}
-            </div>
+            {/* Lives - hide in practice mode */}
+            {!isPracticeMode ? (
+              <div className="flex items-center gap-1">
+                {Array.from({ length: profile?.max_lives || 3 }).map((_, i) => (
+                  <Heart
+                    key={i}
+                    className={`w-6 h-6 transition-all duration-300 ${
+                      i < lives ? 'fill-destructive text-destructive' : 'text-muted-foreground'
+                    } ${i === lives - 1 && lives <= 1 ? 'animate-pulse' : ''}`}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="w-24" /> /* Spacer for layout balance */
+            )}
           </div>
 
           {/* Progress Bar */}
@@ -212,7 +231,9 @@ const QuestPlay = () => {
           </div>
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>Question {currentQuestionIndex + 1} of {quest.questions.length}</span>
-            <span className="text-primary font-medium">Score: {score}</span>
+            <span className="text-primary font-medium">
+              {isPracticeMode ? 'Practice Mode' : `Score: ${score}`}
+            </span>
           </div>
         </div>
 
