@@ -206,7 +206,7 @@ const QuestPlay = () => {
             {/* Lives - hide in practice mode */}
             {!isPracticeMode ? (
               <div className="flex items-center gap-1">
-                {Array.from({ length: profile?.max_lives || 3 }).map((_, i) => (
+                {Array.from({ length: profile?.max_lives || 5 }).map((_, i) => (
                   <Heart
                     key={i}
                     className={`w-6 h-6 transition-all duration-300 ${
