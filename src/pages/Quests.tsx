@@ -310,14 +310,11 @@ const QuestsPage = () => {
                 return (
                   <Link
                     key={quest.id}
-                    to={canPlay && !isCompleted ? `/quests/${quest.id}` : '#'}
-                    className={`np-quest-card group animate-fade-in-up ${!canPlay || isCompleted ? 'cursor-not-allowed' : ''} ${isCompleted ? 'opacity-75' : ''} ${!canPlay && !isCompleted ? 'opacity-50' : ''}`}
+                    to={canPlay ? `/quests/${quest.id}${isCompleted ? '?mode=practice' : ''}` : '#'}
+                    className={`np-quest-card group animate-fade-in-up ${!canPlay ? 'opacity-50 cursor-not-allowed' : ''}`}
                     style={{ animationDelay: `${index * 100}ms`, animationFillMode: 'forwards' }}
                     onClick={(e) => {
-                      if (isCompleted) {
-                        e.preventDefault();
-                        toast.info('You have already completed this quest!');
-                      } else if (!canPlay) {
+                      if (!canPlay) {
                         e.preventDefault();
                         toast.error(`No lives left! Wait ${formatCooldown(cooldownTimer)} or come back in 1 hour.`);
                       }
@@ -342,6 +339,11 @@ const QuestsPage = () => {
                         <div className="absolute top-3 right-3 bg-success text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1 shadow-lg">
                           <CheckCircle2 className="w-4 h-4" />
                           Done
+                        </div>
+                      )}
+                      {isCompleted && (
+                        <div className="absolute bottom-3 right-3 bg-primary/90 text-white px-2 py-1 rounded-full text-xs font-medium shadow-lg">
+                          Practice Mode
                         </div>
                       )}
                     </div>
