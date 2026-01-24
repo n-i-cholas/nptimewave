@@ -267,13 +267,36 @@ export const useUserProgress = () => {
   const { user, profile, updateProfile, refreshProfile } = useAuth();
 
   const addPoints = async (amount: number) => {
-    if (!profile) return;
-    await updateProfile({ total_points: profile.total_points + amount });
+    if (!user) return;
+    // Use RPC or direct increment to avoid stale state issues
+    const { data: currentProfile } = await supabase
+      .from('profiles')
+      .select('total_points')
+      .eq('user_id', user.id)
+      .single();
+    
+    if (currentProfile) {
+      await supabase
+        .from('profiles')
+        .update({ total_points: currentProfile.total_points + amount })
+        .eq('user_id', user.id);
+    }
   };
 
   const removePoints = async (amount: number) => {
-    if (!profile) return;
-    await updateProfile({ total_points: Math.max(0, profile.total_points - amount) });
+    if (!user) return;
+    const { data: currentProfile } = await supabase
+      .from('profiles')
+      .select('total_points')
+      .eq('user_id', user.id)
+      .single();
+    
+    if (currentProfile) {
+      await supabase
+        .from('profiles')
+        .update({ total_points: Math.max(0, currentProfile.total_points - amount) })
+        .eq('user_id', user.id);
+    }
   };
 
   const loseLife = async () => {
