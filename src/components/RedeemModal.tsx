@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X, QrCode, Check } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface RedeemModalProps {
   isOpen: boolean;
@@ -29,45 +30,15 @@ const RedeemModal = ({ isOpen, onClose, item, onMarkAsUsed }: RedeemModalProps) 
     }, 1500);
   };
 
-  // Generate a mock QR code pattern using CSS
-  const generateMockQRPattern = () => {
-    const rows = 9;
-    const cols = 9;
-    const pattern = [];
-    
-    // Simple deterministic pattern based on item id
-    const seed = item.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    
-    for (let i = 0; i < rows; i++) {
-      const row = [];
-      for (let j = 0; j < cols; j++) {
-        // Corner patterns (fixed)
-        if ((i < 3 && j < 3) || (i < 3 && j >= cols - 3) || (i >= rows - 3 && j < 3)) {
-          if (i === 0 || i === 2 || j === 0 || j === 2 || 
-              (i < 3 && j < 3 && (i === 0 || i === 2 || j === 0 || j === 2)) ||
-              (i < 3 && j >= cols - 3 && (i === 0 || i === 2 || j === cols - 1 || j === cols - 3)) ||
-              (i >= rows - 3 && j < 3 && (i === rows - 1 || i === rows - 3 || j === 0 || j === 2))) {
-            row.push(true);
-          } else if (i === 1 && j === 1) {
-            row.push(true);
-          } else if (i < 3 && j >= cols - 3 && i === 1 && j === cols - 2) {
-            row.push(true);
-          } else if (i >= rows - 3 && j < 3 && i === rows - 2 && j === 1) {
-            row.push(true);
-          } else {
-            row.push(false);
-          }
-        } else {
-          // Random pattern based on seed
-          row.push((seed * (i + 1) * (j + 1)) % 3 === 0);
-        }
-      }
-      pattern.push(row);
-    }
-    return pattern;
-  };
-
-  const qrPattern = generateMockQRPattern();
+  // Generate a unique redemption code for the QR
+  const redemptionCode = `NP-REWARD-${item.id.slice(0, 8).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+  const qrValue = JSON.stringify({
+    type: 'np_timewave_redemption',
+    itemId: item.id,
+    itemName: item.item_name,
+    code: redemptionCode,
+    timestamp: new Date().toISOString()
+  });
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in p-4">
@@ -100,17 +71,16 @@ const RedeemModal = ({ isOpen, onClose, item, onMarkAsUsed }: RedeemModalProps) 
           {!isUsed ? (
             <>
               <div className="bg-white p-4 rounded-xl inline-block mb-4 shadow-lg">
-                <div className="grid gap-[2px]" style={{ gridTemplateColumns: `repeat(9, 1fr)` }}>
-                  {qrPattern.map((row, i) => 
-                    row.map((cell, j) => (
-                      <div 
-                        key={`${i}-${j}`}
-                        className={`w-4 h-4 rounded-sm ${cell ? 'bg-gray-900' : 'bg-white'}`}
-                      />
-                    ))
-                  )}
-                </div>
+                <QRCodeSVG 
+                  value={qrValue}
+                  size={160}
+                  level="M"
+                  includeMargin={false}
+                  bgColor="#ffffff"
+                  fgColor="#1a1a1a"
+                />
               </div>
+              <p className="text-xs text-muted-foreground mb-2 font-mono">{redemptionCode}</p>
 
               <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm mb-6">
                 <QrCode className="w-4 h-4" />
