@@ -28,7 +28,8 @@ const QuestPlay = () => {
   const [completedQuests, setCompletedQuests] = useState<(string | null)[]>([]);
 
   const quest = quests.find((q) => q.id === questId);
-  const lives = profile?.lives || 0;
+  const lives = profile?.lives ?? 5; // Default to 5 while profile loads
+  const profileLoaded = profile !== null;
 
   useEffect(() => {
     if (user) {
@@ -37,12 +38,12 @@ const QuestPlay = () => {
     }
   }, [user]);
 
-  // In practice mode, don't check lives
+  // In practice mode, don't check lives - only check after profile is loaded
   useEffect(() => {
-    if (lives === 0 && !questsLoading && user && !isPracticeMode) {
+    if (profileLoaded && lives === 0 && !questsLoading && user && !isPracticeMode) {
       setGameOver(true);
     }
-  }, [lives, questsLoading, user, isPracticeMode]);
+  }, [lives, questsLoading, user, isPracticeMode, profileLoaded]);
 
   // Show login prompt if not authenticated
   if (!user) {
